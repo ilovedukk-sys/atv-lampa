@@ -1,0 +1,934 @@
+/*
+ * Стили прототипа.
+ * Пишем с оглядкой на webOS 4 (Chromium 53): без gap во flex, без inset, без aspect-ratio.
+ * Анимируем только transform и opacity — это дёшево для слабых ТВ.
+ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  cursor: default;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Сцена 1920×1080, масштабируется в main.tsx */
+#app {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+
+.app { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+
+/* ---------- Top Shelf: фон ---------- */
+
+.backdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/*
+ * Фон из двух слоёв, как в tvOS:
+ *   .backdrop__sharp — чёткий кадр + затемнение под текст (рисуются вместе, один слой);
+ *   .backdrop__soft  — тот же кадр в маленьком разрешении, растянутый на весь экран:
+ *                      выглядит размытым, а стоит почти ничего (настоящий blur на webOS 4 дорог).
+ * При прокрутке вниз чёткий слой растворяется, размытый проявляется приглушённым.
+ * В покое видеочип рисует только один из них (слой с прозрачностью 0 пропускается).
+ */
+.backdrop__slide {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+.backdrop__sharp {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  transition: opacity 0.4s var(--ease-out); /* короче — меньше кадров с двумя полноэкранными слоями */
+  will-change: opacity;
+}
+.is-scrolled .backdrop__sharp { opacity: 0; }
+.backdrop__soft {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+  will-change: opacity;
+}
+.is-scrolled .backdrop__soft { opacity: 0.42; }
+/* На экране фильма — простое приглушение без размытого слоя: при спуске к сериям одновременно
+   грузятся кадры серий, и смена двух слоёв на весь экран давала 20 fps вместо 38 */
+.details .backdrop__soft { display: none; }
+.details.is-scrolled .backdrop__sharp { opacity: 0.3; }
+
+/* «Наезд камеры» (эффект Кена Бёрнса) пробовали: на webOS 4 прокрутка падала с 56 до 18 fps — отказались. */
+.backdrop__img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  object-fit: cover;
+}
+.backdrop__shade {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.45) 40%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 50%, #000 100%);
+}
+/* Проявление нового слайда — на самом слое картинки (без промежуточного буфера на весь экран) */
+.backdrop__slide.is-entering .backdrop__sharp { animation: fadeIn 1.2s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- страница ---------- */
+
+.page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  transition: transform 0.6s var(--ease-out);
+  will-change: transform; /* прокрутка страницы двигает готовый слой, а не перерисовывает */
+}
+.page__end { height: 240px; }
+
+/* ---------- Top Shelf: текст и кнопки ---------- */
+
+.hero {
+  position: relative;
+  height: 790px;
+}
+
+.hero__info {
+  position: absolute;
+  left: var(--safe-x);
+  bottom: 40px;
+  width: 1100px;
+}
+.hero__info, .hero__dots { transition: opacity 0.4s; will-change: opacity; }
+.is-scrolled .hero__info,
+.is-scrolled .hero__dots { opacity: 0; }
+
+.hero__text { animation: heroIn 0.9s var(--ease-out); }
+
+@keyframes heroIn {
+  from { opacity: 0; transform: translate3d(0, 24px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+.hero__logo {
+  margin: 0 0 18px;
+  font-size: 92px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -2px;
+  /* без размытой тени: на слабом ТВ она рисуется очень долго, контраст даёт затемнение фона */
+}
+.hero__meta {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.hero__desc {
+  margin: 14px 0 0;
+  font-size: 26px;
+  line-height: 1.38;
+  color: rgba(255, 255, 255, 0.86);
+  max-width: 780px;
+}
+.hero__buttons {
+  display: flex;
+  align-items: center;
+  margin-top: 36px;
+}
+.hero__buttons .btn + .btn { margin-left: 20px; }
+
+.hero__dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 62px;
+  text-align: center;
+}
+.hero__dots i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: background 0.4s, width 0.4s;
+}
+/* Активная точка — полоска, которая заполняется до смены слайда (как в tvOS) */
+.hero__dots i.is-active {
+  position: relative;
+  width: 44px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.35);
+}
+.hero__dots i b {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  border-radius: 5px;
+  background: #fff;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+
+}
+
+/* ---------- кнопки tvOS ---------- */
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 76px;
+  border-radius: var(--radius-button);
+  background: var(--fill);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 600;
+  /* box-shadow не анимируем: на слабом ТВ это перерисовка на каждом кадре */
+  transition: transform 0.35s var(--spring), background 0.2s, color 0.2s;
+}
+.btn--primary { padding: 0 44px 0 36px; }
+.btn--primary svg { margin-right: 12px; }
+.btn--round { width: 76px; border-radius: 38px; }
+
+.btn.is-focused {
+  background: #fff;
+  color: #000;
+  transform: scale(1.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- боковая панель (как в приложении Apple TV, tvOS 18+) ---------- */
+
+/*
+ * Стеклянная плашка слева. Спрятана, пока фокус в контенте; выезжает поверх кадра,
+ * когда фокус в ней (класс .sidebar-open на экране ставит Sidebar.tsx).
+ * Двигаем только transform/opacity готового слоя — дёшево для слабого ТВ.
+ */
+.sidebar {
+  position: absolute;
+  top: 34px;
+  left: 34px;
+  width: 400px;
+  padding: 18px 16px 16px;
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  transform: translate3d(-470px, 0, 0);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-out), opacity 0.3s;
+  will-change: transform, opacity;
+}
+.sidebar-open .sidebar { transform: none; opacity: 1; }
+/* webOS 4–5 без размытия: плашка чуть синеватая и плотная, как стекло tvOS на тёмном фоне */
+.sidebar.glass { background: rgba(38, 46, 62, 0.92); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sidebar.glass { background: rgba(70, 82, 104, 0.32); }
+}
+
+.sidebar__profile {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px 18px;
+}
+.sidebar__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-right: 14px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #6e8fb8, #3a4d6b);
+  color: rgba(255, 255, 255, 0.92);
+}
+.sidebar__name { flex: 1; font-size: 22px; font-weight: 600; }
+.sidebar__time { font-size: 22px; color: var(--text-secondary); }
+
+.sidebar__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 64px;
+  padding: 0 22px;
+  margin-top: 4px;
+  border-radius: 32px;
+  font-size: 26px;
+  font-weight: 500;
+  text-align: left;
+  color: var(--text-secondary);
+  transition: transform 0.3s var(--spring), background 0.2s, color 0.2s;
+}
+.sidebar__item svg { margin-right: 18px; flex-shrink: 0; }
+/* Текущий раздел — едва заметная капсула; под фокусом — светлое «стекло» с каймой, как в tvOS 26 */
+.sidebar__item.is-active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+.sidebar__item.is-focused {
+  color: #fff;
+  background: rgba(150, 190, 255, 0.38);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.65), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: scale(1.04);
+}
+
+/* ---------- полки ---------- */
+
+.shelf { position: relative; padding-top: 34px; }
+
+.shelf__title {
+  margin: 0 0 22px var(--safe-x);
+  font-size: 30px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.shelf__viewport { position: relative; width: 1920px; }
+
+.shelf__track {
+  position: relative;
+  display: flex;
+  width: -webkit-max-content;
+  width: max-content;
+  padding: 0 var(--safe-x);
+  transition: transform 0.5s var(--ease-out);
+  will-change: transform;
+}
+
+/* ---------- карточки ---------- */
+
+.card { flex-shrink: 0; }
+.card--landscape { width: 400px; margin-right: 40px; }
+.card--poster { width: 232px; margin-right: 36px; }
+.card--genre { width: 300px; margin-right: 32px; }
+.card:last-child { margin-right: 0; }
+
+/*
+ * Производительность на webOS 4 (LG 49UK6300): на каждом кадре анимации браузер
+ * пересматривает все позиционированные элементы и слои. Поэтому карточка максимально простая:
+ *   — не слой: ни will-change, ни 3D-преобразований (даже perspective() делает слоем);
+ *   — минимум позиционированных элементов: картинка — фон обложки, тень — у самой рамки.
+ * Увеличение — только у выбранной карточки, перспектива — только при наклоне курсором.
+ * По замеру: слоёв 212 → 43 (scripts/layers.mjs), профиль кадра — scripts/trace.mjs.
+ */
+.card__tilt {
+  transition: transform 0.45s var(--spring);
+}
+.card.is-focused .card__tilt { transform: scale(1.1); }
+.card.is-tilting .card__tilt { transition: transform 0.15s ease-out; }
+
+
+.card__frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: #1c1c1e;
+}
+/* Тень выбранной карточки — прямо у рамки (overflow её не обрезает) */
+.card.is-focused .card__frame { box-shadow: 0 26px 40px rgba(0, 0, 0, 0.7); }
+html.noshadow .card.is-focused .card__frame { box-shadow: none; }
+.card--landscape .card__frame { height: 225px; }
+.card--poster .card__frame { height: 348px; }
+.card--genre .card__frame { height: 170px; }
+
+.card__shine {
+  display: none;
+  position: absolute;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 32%);
+  transition: transform 0.15s ease-out;
+  pointer-events: none;
+}
+/* Блик — только при наклоне курсором Magic Remote, и не на главной */
+.card.is-tilting .card__shine { display: block; }
+.home .card.is-tilting .card__shine { display: none; }
+/*
+ * Отблеск: когда вы остановились на карточке, по ней один раз пробегает световая полоса,
+ * как свет на стекле в tvOS. Класс is-shining ставит parallax.ts через 0,35 с покоя —
+ * при быстром листании отблеск не запускается и не отнимает кадры.
+ * Полоса существует только во время пробега (псевдоэлемент), рамка обрезает её по краям.
+ */
+.card.is-shining .card__frame:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.26) 50%, rgba(255, 255, 255, 0) 100%);
+  animation: shineSweep 0.8s ease-out both;
+  pointer-events: none;
+}
+@keyframes shineSweep {
+  from { transform: translate3d(-110%, 0, 0); }
+  to { transform: translate3d(260%, 0, 0); }
+}
+
+/* «ОК»: короткое «проседание», как нажатие на тачпад */
+.card.is-focused.is-pressed .card__tilt { transform: scale(1.03); transition-duration: 0.1s; }
+.btn.is-pressed,
+.sidebar__item.is-pressed,
+.setting.is-pressed,
+.season-tab.is-pressed,
+.kb__key.is-pressed { transform: scale(0.93) !important; transition-duration: 0.1s; }
+.details__desc.is-pressed { transform: scale(0.98); }
+
+.card__progress {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 16px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+.card__progress i { display: block; height: 100%; border-radius: 3px; background: #fff; }
+
+.card__caption {
+  margin-top: 24px; /* место под увеличенную карточку — подпись не двигаем, чтобы не перерисовывать */
+}
+.card--poster .card__caption {
+  opacity: 0;
+  text-align: center;
+}
+/* Широкие карточки: название на кадре, подпись снизу — только у выбранной (как в Apple TV) */
+.card--landscape .card__caption { opacity: 0; }
+.card--landscape.is-focused .card__caption { opacity: 1; }
+.art--photo.art--landscape .art__bg { display: flex; align-items: flex-end; }
+.art__title {
+  max-height: 2.2em;
+  padding: 0 20px 16px;
+  overflow: hidden;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.card--poster.is-focused .card__caption { opacity: 1; }
+
+.card__title {
+  font-size: 22px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card__sub {
+  margin-top: 4px;
+  font-size: 19px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* «Упор»: дальше идти некуда */
+.bump-left { animation: bumpLeft 0.3s ease; }
+.bump-right { animation: bumpRight 0.3s ease; }
+.bump-up { animation: bumpUp 0.3s ease; }
+.bump-down { animation: bumpDown 0.3s ease; }
+@keyframes bumpLeft { 40% { transform: translate3d(-12px, 0, 0); } }
+@keyframes bumpRight { 40% { transform: translate3d(12px, 0, 0); } }
+@keyframes bumpUp { 40% { transform: translate3d(0, -10px, 0); } }
+@keyframes bumpDown { 40% { transform: translate3d(0, 10px, 0); } }
+
+/* ---------- обложки-заглушки ---------- */
+
+.art { height: 100%; }
+
+.art__bg {
+  height: 100%;
+  background-size: 100% 100%;
+  transition: transform 0.15s ease-out;
+}
+/* Фото TMDB: заполнить карточку, обрезая лишнее (как object-fit: cover) */
+.art--photo .art__bg { background-size: cover; background-position: 50% 30%; }
+.art--hero .art__bg { transition: none; }
+
+.art__logo {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 20px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease-out;
+}
+.card--landscape .art__logo { bottom: 40px; }
+.art--poster .art__logo { bottom: 28px; text-align: center; font-size: 28px; }
+.art--genre .art__logo {
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 28px;
+}
+
+/* ---------- уведомление ---------- */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  width: 960px;
+  margin-left: -480px;
+  padding: 22px 30px;
+  border-radius: 22px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translate3d(0, 30px, 0);
+  transition: opacity 0.3s, transform 0.4s var(--spring);
+  pointer-events: none;
+}
+.toast.is-visible { opacity: 1; transform: none; }
+
+/* ---------- счётчик FPS (красная кнопка пульта / F2 на компьютере) ---------- */
+
+.fps {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 100;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  font: 600 20px/1.2 var(--font);
+  pointer-events: none;
+  will-change: transform;
+}
+
+/*
+ * Облегчённый режим (зелёная кнопка пульта / F4): без размытого фона, блика,
+ * полоски прогресса и выплывания. По замеру на 49UK6300: +8 fps на прокрутке, +14 на открытии фильма.
+ */
+html.lite .card.is-shining .card__frame:after { display: none; }
+html.lite .details__info { animation: none; }
+html.lite .hero__dots i b { display: none; }
+html.lite .hero__dots i.is-active { background: #fff; }
+html.lite .backdrop__soft { display: none; }
+
+/* Варианты замера: без картинок / без фона Top Shelf */
+html.noimg .art--photo .art__bg { background-image: none !important; }
+html.nobg .backdrop,
+html.nobg .details .backdrop__slide { display: none; }
+
+/* Вариант замера «Мин. слоёв»: ничего не выносим в отдельные слои заранее */
+html.flat .page,
+html.flat .shelf__track,
+html.flat .hero__info,
+html.flat .hero__dots,
+html.flat .backdrop__slide,
+html.flat .card__tilt,
+html.flat .card--poster .card__caption { will-change: auto; }
+
+/* ---------- таблица замера плавности (npm run tv:bench) ---------- */
+
+.bench {
+  position: fixed;
+  left: 80px;
+  top: 150px;
+  z-index: 101;
+  padding: 24px 30px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.88);
+  font: 500 24px/1.3 var(--font);
+  pointer-events: none;
+}
+.bench__title { font-weight: 700; font-size: 28px; }
+.bench__hint { font-size: 18px; color: rgba(255, 255, 255, 0.55); margin: 4px 0 12px; }
+.bench td span { font-size: 18px; color: rgba(255, 255, 255, 0.6); }
+.bench table { border-collapse: collapse; }
+.bench th { font-size: 18px; font-weight: 600; color: rgba(255, 255, 255, 0.6); text-align: left; padding: 4px 22px 8px 0; }
+.bench td { padding: 5px 22px 5px 0; }
+
+/* ---------- экраны ---------- */
+
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #000;
+}
+.screen.is-hidden { display: none; }
+/*
+ * Главную под экраном фильма не прячем вовсе: экран фильма непрозрачный и закрывает её целиком,
+ * а скрытие = пересчёт стилей ~1500 элементов при открытии и при возврате.
+ * По замеру на ТВ: открытие фильма 29 → 39 fps, возврат 47 → 51 fps.
+ */
+.screen.home.is-hidden { display: block; }
+/* Появление экрана: проявляется только фон — анимация всего экрана слишком дорога для ТВ */
+.details .backdrop__sharp { animation: fadeIn 0.5s ease; }
+/* Название, описание и кнопки выплывают снизу */
+.details__info { animation: riseIn 0.4s var(--ease-out) both; }
+@keyframes riseIn {
+  from { opacity: 0; transform: translate3d(0, 34px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- бейджи и доп. кнопки ---------- */
+
+.badge {
+  display: inline-block;
+  padding: 0 9px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 7px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 26px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.btn--text { padding: 0 36px; }
+.details__buttons .btn + .btn { margin-left: 20px; }
+
+/* ---------- экран фильма ---------- */
+
+.details__top { position: relative; height: 800px; }
+
+.details__info {
+  position: absolute;
+  left: var(--safe-x);
+  bottom: 30px;
+  width: 1100px;
+}
+
+.details__logo {
+  margin: 0 0 18px;
+  font-size: 84px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.details__meta {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.details__meta > * + * { margin-left: 12px; }
+.details__rating { color: #fff; font-weight: 600; }
+
+/* Описание: три строки, при фокусе подсвечивается, «ОК» — открыть целиком */
+.details__desc {
+  margin: 14px 0 0 -18px;
+  padding: 10px 18px 12px;
+  max-width: 880px;
+  border-radius: 16px;
+  transition: background 0.2s, transform 0.35s var(--spring);
+}
+.details__desc.is-focused { background: rgba(255, 255, 255, 0.14); transform: scale(1.02); }
+.details__desc p {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.38;
+  color: rgba(255, 255, 255, 0.86);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.details__more {
+  margin-top: 4px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.details__progress {
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+  font-size: 21px;
+  color: var(--text-secondary);
+}
+.details__bar {
+  display: block;
+  width: 220px;
+  height: 6px;
+  margin-right: 16px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+.details__bar i { display: block; height: 100%; background: #fff; }
+
+.details__buttons {
+  display: flex;
+  align-items: center;
+  margin-top: 28px;
+}
+
+/* ---------- сезоны и серии ---------- */
+
+.seasons__tabs {
+  display: flex;
+  margin: 0 0 24px var(--safe-x);
+}
+.season-tab {
+  height: 52px;
+  padding: 0 26px;
+  margin-right: 8px;
+  border-radius: 26px;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: transform 0.3s var(--spring), background 0.2s, color 0.2s;
+}
+.season-tab.is-active { color: #fff; background: rgba(255, 255, 255, 0.14); }
+.season-tab.is-focused { color: #000; background: #fff; transform: scale(1.06); }
+
+.card--episode { width: 400px; margin-right: 40px; }
+.card--episode .card__frame { height: 225px; }
+.card__text {
+  margin-top: 6px;
+  font-size: 18px;
+  line-height: 1.35;
+  color: var(--text-tertiary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- актёры (круглые карточки) ---------- */
+
+.card--person { width: 180px; margin-right: 40px; }
+.card--person .card__frame { height: 180px; border-radius: 50%; }
+.card--person .card__caption { text-align: center; }
+.card--person .card__title { font-size: 20px; }
+.card--person .card__sub { font-size: 17px; }
+.art--person .art__logo {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52px;
+  letter-spacing: 1px;
+}
+
+/* ---------- окно описания ---------- */
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.25s ease;
+}
+.overlay__panel {
+  width: 1100px;
+  padding: 56px 64px;
+  border-radius: 30px;
+}
+.overlay__panel h2 { margin: 0 0 20px; font-size: 44px; font-weight: 700; }
+.overlay__panel p { margin: 0; font-size: 28px; line-height: 1.45; color: rgba(255, 255, 255, 0.9); }
+.overlay__info { display: flex; margin-top: 34px; font-size: 21px; }
+.overlay__info div { margin-right: 56px; }
+.overlay__info b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.overlay__hint { margin-top: 30px; font-size: 18px; color: var(--text-tertiary); }
+
+/* ---------- настоящие картинки TMDB ---------- */
+
+/* Логотип-название фильма (прозрачный PNG из TMDB) */
+.hero__logoimg,
+.details__logoimg {
+  display: block;
+  max-width: 760px;
+  max-height: 220px;
+  margin-bottom: 22px;
+}
+.details__logoimg { max-height: 200px; }
+
+.hero__desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- загрузка и сообщения ---------- */
+
+.loading,
+.message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.spinner {
+  width: 64px;
+  height: 64px;
+  border: 5px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.loading__text { margin-top: 20px; font-size: 24px; color: var(--text-secondary); }
+.message { position: relative; padding: 220px 160px 0; justify-content: flex-start; }
+.screen > .message { position: absolute; padding-top: 0; justify-content: center; }
+.message__title { font-size: 40px; font-weight: 700; }
+.message__text { margin-top: 14px; font-size: 26px; color: var(--text-secondary); max-width: 900px; }
+
+.page__top { height: 80px; }
+
+/* ---------- сетка постеров ---------- */
+
+.grid__row {
+  display: flex;
+  padding: 0 var(--safe-x);
+  margin-bottom: 30px;
+}
+
+.genre__head,
+.tabpage__head { padding: 80px var(--safe-x) 34px; }
+.genre__head { padding-top: 70px; }
+.genre__head h1,
+.tabpage__head h1 { margin: 0; font-size: 64px; font-weight: 700; letter-spacing: -1px; }
+.genre__sub,
+.tabpage__sub { margin-top: 6px; font-size: 26px; color: var(--text-secondary); }
+
+/* ---------- поиск ---------- */
+
+.search__top { padding: 80px var(--safe-x) 10px; }
+.search__field {
+  display: flex;
+  align-items: center;
+  width: 1100px;
+  height: 76px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.25);
+  font-size: 44px;
+  font-weight: 600;
+}
+.search__placeholder { color: var(--text-tertiary); font-weight: 500; }
+.search__caret {
+  display: inline-block;
+  width: 3px;
+  height: 46px;
+  margin-left: 4px;
+  background: #fff;
+}
+.kb__row { display: flex; margin-bottom: 10px; }
+.kb__key {
+  width: 76px;
+  height: 64px;
+  margin-right: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-size: 28px;
+  font-weight: 500;
+  transition: transform 0.25s var(--spring), background 0.15s, color 0.15s;
+}
+.kb__key.is-focused { background: #fff; color: #000; transform: scale(1.12); }
+.kb__key--wide { width: 330px; font-size: 22px; }
+.kb__key--mid { width: 160px; font-size: 22px; }
+.search__empty { padding: 30px var(--safe-x); font-size: 26px; color: var(--text-secondary); }
+
+/* ---------- настройки ---------- */
+
+.settings { padding: 0 var(--safe-x); width: 1240px; }
+.setting {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 92px;
+  padding: 14px 30px;
+  margin-bottom: 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.07);
+  text-align: left;
+  transition: transform 0.3s var(--spring), background 0.2s, color 0.2s;
+}
+.setting.is-focused { background: #fff; color: #000; transform: scale(1.03); }
+.setting__text { flex: 1; }
+.setting__label { display: block; font-size: 28px; font-weight: 600; }
+.setting__hint { display: block; margin-top: 4px; font-size: 19px; color: var(--text-tertiary); }
+.setting.is-focused .setting__hint { color: rgba(0, 0, 0, 0.55); }
+.setting__value { font-size: 26px; color: var(--text-secondary); }
+.setting.is-focused .setting__value { color: rgba(0, 0, 0, 0.7); }
+.settings__about {
+  padding: 30px var(--safe-x);
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+.settings__about b { display: block; margin-bottom: 4px; font-size: 22px; color: var(--text-secondary); }
+.settings__tmdb { font-size: 17px; }

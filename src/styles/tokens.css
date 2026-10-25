@@ -1,0 +1,32 @@
+/* Дизайн-токены в духе tvOS. Все размеры — для экрана 1920×1080. */
+:root {
+  --safe-x: 80px;
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-tertiary: rgba(255, 255, 255, 0.5);
+
+  --bg: #000000;
+  --fill: rgba(255, 255, 255, 0.16);
+
+  --radius-card: 14px;
+  --radius-button: 14px;
+
+  /* «Пружина» tvOS: лёгкий перелёт и мягкое возвращение */
+  --spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --font: 'Inter', -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Стекло: на webOS 4–5 — плотная подложка, на webOS 6+ — настоящее размытие */
+.glass {
+  background: rgba(46, 46, 52, 0.86);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(110, 110, 120, 0.26);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    backdrop-filter: blur(40px) saturate(1.8);
+  }
+}

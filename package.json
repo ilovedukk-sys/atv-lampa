@@ -1,0 +1,31 @@
+{
+  "name": "apple-tv-lampa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "icons": "node scripts/make-icons.mjs",
+    "tv:package": "ares-package dist -o build",
+    "tv:install": "node scripts/tv.mjs install",
+    "tv:launch": "node scripts/tv.mjs launch",
+    "tv:inspect": "node scripts/tv.mjs inspect",
+    "tv": "npm run build && npm run tv:package && npm run tv:install && npm run tv:launch",
+    "tv:screenshot": "node scripts/tv.mjs screenshot",
+    "tv:bench": "node scripts/tv.mjs bench"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "preact": "^11.0.2"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@vitejs/plugin-legacy": "^8.2.3",
+    "@webos-tools/cli": "^3.2.6",
+    "terser": "^5.51.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}
