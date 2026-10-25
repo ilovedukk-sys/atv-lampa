@@ -15,6 +15,7 @@ import { Badge, LibraryButton, PlayButton, TextButton } from './Buttons';
 import { Card } from './Card';
 import { ShelfRow } from './ShelfRow';
 import { BackdropImage, TitleLogo } from './Hero';
+import { AboutSection, InfoSection, type MoreContent } from './About';
 import { finished, lastWatch, remaining, useHistoryVersion } from '../core/history';
 import type { WatchOptions } from '../App';
 
@@ -29,12 +30,20 @@ interface Props {
 
 const fromTmdb = (item: Item) => hasTmdb && !!parseId(item.id);
 
+// Сколько длится появление экрана (riseIn в app.css) — до его конца нижние разделы не строим
+const OPEN_ANIMATION_MS = 450;
+
 export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }: Props) {
   const [d, setD] = useState<Details>(() => (fromTmdb(item) ? quickDetails(item) : getDetails(item)));
   const root = useRef<HTMLDivElement>(null);
   const desc = useRef<HTMLDivElement>(null);
-  const [more, setMore] = useState(false);
-  const wasOpen = useRef(false);
+  // Окно «ЕЩЁ»: полное описание или панель из нижних разделов
+  const [more, setMore] = useState<MoreContent | 'desc' | null>(null);
+  const moreFrom = useRef<HTMLElement | null>(null);
+  const openMore = (content: MoreContent | 'desc') => {
+    moreFrom.current = getFocused();
+    setMore(content);
+  };
 
   /*
    * Нижние разделы (сезоны → актёры → похожее) достраиваем по одному с паузами,
@@ -48,9 +57,10 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
     const step = () => {
       n++;
       setShown(n);
-      if (n < 3) t = window.setTimeout(step, 160);
+      if (n < 5) t = window.setTimeout(step, 160);
     };
-    t = window.setTimeout(step, 60);
+    // Первый раздел — после анимации открытия (0,4 с): пока она идёт, процессор ТВ ей не мешаем
+    t = window.setTimeout(step, OPEN_ANIMATION_MS);
     return () => clearTimeout(t);
   }, [d.loaded]);
 
@@ -74,17 +84,17 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
   // «Назад»: сначала закрывает окно описания, потом сам экран
   useEffect(() => {
     if (!active) return;
-    return pushBackHandler(() => (more ? setMore(false) : onClose()));
+    return pushBackHandler(() => (more ? setMore(null) : onClose()));
   }, [active, more]);
 
   // Окно описания: фокус внутрь, после закрытия — обратно на описание
   useEffect(() => {
     if (more) {
-      wasOpen.current = true;
       focusFirstIn(root.current!.querySelector('.overlay') as HTMLElement);
-    } else if (wasOpen.current) {
-      wasOpen.current = false;
-      if (desc.current) focus(desc.current);
+    } else if (moreFrom.current) {
+      const back = moreFrom.current;
+      moreFrom.current = null;
+      if (document.body.contains(back)) focus(back);
     }
   }, [more]);
 
@@ -106,7 +116,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
   return (
     <div ref={root} class={`screen details${active ? '' : ' is-hidden'}`} data-screen>
       <div class="backdrop__slide">
-        <BackdropImage item={it} />
+        <BackdropImage item={it} soft={false} />
       </div>
 
       <div class="page" data-scroll-y>
@@ -114,7 +124,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
           <div class="details__info">
             <TitleLogo item={it} logo={d.logo} cls="details__logo" />
             <Meta d={d} />
-            <div ref={desc} class="details__desc" data-focusable onClick={() => setMore(true)}>
+            <div ref={desc} class="details__desc" data-focusable onClick={() => openMore('desc')}>
               <p>{d.description || (d.loaded ? 'Описание отсутствует.' : '…')}</p>
               <div class="details__more">ЕЩЁ</div>
             </div>
@@ -150,40 +160,69 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
         {shown >= 3 && d.similar.length > 0 && (
           <ShelfRow shelf={{ id: 'similar', title: 'Похожее', kind: 'poster', items: d.similar }} onSelect={onOpen} />
         )}
-        <div class="page__end" />
+        {/* Подробности — на сером фоне, как в Apple TV: кадр фильма за ними не мешает читать */}
+        {shown >= 4 && d.info && <div class="details__fade" />}
+        {shown >= 4 && d.info ? (
+          <div class="details__lower">
+            <AboutSection d={d} onMore={openMore} />
+            {shown >= 5 && <InfoSection d={d} onMore={openMore} />}
+            <div class="page__end" />
+          </div>
+        ) : (
+          <div class="page__end" />
+        )}
       </div>
 
       {more && (
         <div class="overlay" data-screen>
-          <div class="overlay__panel glass" data-focusable onClick={() => setMore(false)}>
-            <h2>{it.title}</h2>
-            <p>{d.description}</p>
-            <div class="overlay__info">
-              {d.genres.length > 0 && (
-                <div>
-                  <b>Жанр</b>
-                  {d.genres.join(', ')}
+          <div class="overlay__panel glass" data-focusable onClick={() => setMore(null)}>
+            {more === 'desc' ? (
+              <>
+                <h2>{it.title}</h2>
+                <p>{d.description}</p>
+                <div class="overlay__info">
+                  {d.genres.length > 0 && (
+                    <div>
+                      <b>Жанр</b>
+                      {d.genres.join(', ')}
+                    </div>
+                  )}
+                  {d.year && (
+                    <div>
+                      <b>Год</b>
+                      {d.year}
+                    </div>
+                  )}
+                  {d.director && (
+                    <div>
+                      <b>{d.kind === 'show' ? 'Создатель' : 'Режиссёр'}</b>
+                      {d.director}
+                    </div>
+                  )}
+                  {d.rating && (
+                    <div>
+                      <b>Рейтинг TMDB</b>
+                      {d.rating}
+                    </div>
+                  )}
                 </div>
-              )}
-              {d.year && (
-                <div>
-                  <b>Год</b>
-                  {d.year}
-                </div>
-              )}
-              {d.director && (
-                <div>
-                  <b>{d.kind === 'show' ? 'Создатель' : 'Режиссёр'}</b>
-                  {d.director}
-                </div>
-              )}
-              {d.rating && (
-                <div>
-                  <b>Рейтинг TMDB</b>
-                  {d.rating}
-                </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                <h2>{more.title}</h2>
+                {more.text && <p>{more.text}</p>}
+                {more.rows.length > 0 && (
+                  <div class="overlay__rows">
+                    {more.rows.map(([k, v]) => (
+                      <div key={k}>
+                        <b>{k}</b>
+                        {v}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
             <div class="overlay__hint">«ОК» или «Назад» — закрыть</div>
           </div>
         </div>

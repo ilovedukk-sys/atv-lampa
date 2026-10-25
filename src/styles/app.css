@@ -1154,3 +1154,115 @@ html.flat .card--poster .card__caption { will-change: auto; }
 }
 .player__empty { font-size: 22px; color: var(--text-tertiary); }
 .player__panel .player__hint { margin-top: 6px; }
+
+/* ---------- экран фильма: «Описание» и «Информация» (как в Apple TV) ---------- */
+
+/* Карточки и панели простые (без слоёв и теней), как и карточки полок — дёшево для слабого ТВ */
+.about { margin-top: 30px; padding-bottom: 10px; }
+.about__row { display: flex; padding: 0 var(--safe-x); }
+.about__card {
+  position: relative;
+  height: 290px;
+  margin-right: 24px;
+  padding: 26px 28px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  transition: transform 0.3s var(--spring), background 0.2s, color 0.2s;
+}
+.about__card.is-focused { background: rgba(255, 255, 255, 0.92); color: #000; transform: scale(1.05); }
+.about__card--main { width: 620px; }
+.about__card--quote { width: 440px; }
+.about__card--score { width: 280px; }
+.about__card--money { width: 340px; }
+
+.about__title { font-size: 30px; font-weight: 700; }
+.about__sub,
+.about__label { margin-top: 2px; font-size: 20px; color: var(--text-tertiary); }
+.about__label { margin: 0 0 14px; font-weight: 600; }
+.about__text {
+  margin: 16px 0 0;
+  font-size: 22px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.about__quote {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.about__more {
+  position: absolute;
+  right: 22px;
+  bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+}
+.about__card.is-focused .about__sub,
+.about__card.is-focused .about__label,
+.about__card.is-focused .about__more,
+.about__card.is-focused .about__stats span { color: rgba(0, 0, 0, 0.55); }
+
+.about__score { font-size: 76px; font-weight: 700; line-height: 1; letter-spacing: -2px; }
+.about__score small { margin-left: 2px; font-size: 30px; letter-spacing: 0; }
+.about__source { margin-top: 8px; font-size: 21px; font-weight: 700; color: #e0a050; }
+.about__source.is-good { color: #4cc06a; }
+.about__stats { display: flex; flex-wrap: wrap; margin-top: 30px; font-size: 19px; line-height: 1.5; }
+.about__stats span { width: 50%; color: var(--text-tertiary); }
+.about__stats b { width: 50%; text-align: right; }
+.about__money { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 24px; }
+.about__money span { color: var(--text-secondary); }
+.about__card.is-focused .about__money span { color: rgba(0, 0, 0, 0.6); }
+
+.infocols { display: flex; padding: 40px var(--safe-x) 0; }
+.infocol { width: 560px; margin-right: 40px; }
+.infocol__title { margin: 0 0 16px 18px; font-size: 30px; font-weight: 700; }
+.infocol__panel {
+  position: relative;
+  height: 340px;
+  padding: 20px 22px 44px;
+  border-radius: 24px;
+  overflow: hidden;
+  transition: transform 0.3s var(--spring), background 0.2s, color 0.2s;
+}
+.infocol__panel.is-focused { background: rgba(255, 255, 255, 0.92); color: #000; transform: scale(1.04); }
+.infocol__body { height: 100%; overflow: hidden; }
+.infocol__row { margin-bottom: 14px; }
+.infocol__key { font-size: 18px; font-weight: 600; color: var(--text-tertiary); }
+.infocol__value { margin-top: 2px; font-size: 23px; line-height: 1.3; }
+.infocol__panel.is-focused .infocol__key,
+.infocol__panel.is-focused .about__more { color: rgba(0, 0, 0, 0.55); }
+.infocol__panel .about__more { opacity: 0; }
+.infocol__panel.is-focused .about__more { opacity: 1; }
+
+/* Окно «ЕЩЁ» для панелей: строки «название — значение» */
+.overlay__rows { margin-top: 10px; font-size: 26px; line-height: 1.35; }
+.overlay__rows div { margin-top: 16px; }
+.overlay__rows b {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+/* Фон нижней части рисуется в слое страницы (а не отдельным полноэкранным слоем) — это бесплатно */
+.details__lower {
+  min-height: 1080px; /* до низа экрана — кадр фильма под последней панелью не проглядывает */
+  padding-top: 10px;
+  /* Сплошной цвет: такие участки ТВ не растеризует вовсе (градиент — только в полоске над ним) */
+  background: #1f1f22;
+}
+.details__fade { height: 140px; margin-top: -100px; background: linear-gradient(180deg, rgba(31, 31, 34, 0), #1f1f22); }
+.details__lower .about { margin-top: 0; padding-top: 20px; }
+.details__lower .page__end { height: 760px; } /* серый фон до низа экрана при любой прокрутке */

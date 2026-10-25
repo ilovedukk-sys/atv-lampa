@@ -29,7 +29,10 @@ export function clearArtCache() {
 }
 
 export function artImage(id: string, colors: [string, string], variant: ArtVariant): string {
-  const key = id + ':' + variant;
+  // Картинка зависит только от цветов и вида карточки (id не рисуется), а цветов в палитре ~десяток:
+  // кеш по цветам — заглушки актёров без фото рисуются пару раз за сеанс, а не на каждом фильме
+  void id;
+  const key = colors[0] + colors[1] + ':' + variant;
   if (cache[key]) return cache[key];
 
   const started = performance.now();

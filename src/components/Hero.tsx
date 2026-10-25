@@ -35,18 +35,19 @@ function ProgressFill() {
  * Полноэкранная картинка фона (Top Shelf, экран фильма): чёткий кадр с затемнением
  * и «размытый» вариант для прокрутки (см. .backdrop__sharp / .backdrop__soft в app.css).
  */
-export function BackdropImage({ item }: { item: Item }) {
+export function BackdropImage({ item, soft: withSoft = true }: { item: Item; soft?: boolean }) {
   const photo = photoFor(item, 'hero');
   const fallback = photo ? '' : artImage(item.id, item.colors, 'hero');
   // Маленький кадр (300 px), растянутый на экран, — дешёвая замена размытию
-  const soft = img(item.backdrop, 'w300') || fallback;
+  const soft = withSoft ? img(item.backdrop, 'w300') || fallback : '';
   return (
     <>
       <div class="backdrop__sharp">
         <img class="backdrop__img" src={photo || fallback} alt="" />
         {photo && <div class="backdrop__shade" />}
       </div>
-      <img class="backdrop__soft" src={soft} alt="" />
+      {/* На экране фильма размытый вариант не нужен — не скачиваем и не держим в памяти */}
+      {soft && <img class="backdrop__soft" src={soft} alt="" />}
     </>
   );
 }

@@ -12,6 +12,27 @@ export interface Season {
   episodes?: Item[]; // у TMDB серии грузятся отдельно, когда выбран сезон
 }
 
+/** Нижний блок экрана фильма, как «Информация / Языки» в Apple TV. */
+export interface DetailsInfo {
+  tagline?: string;
+  score?: number; // 0..100 — оценка зрителей TMDB
+  votes?: number;
+  released?: string; // «20 марта 2026» или «2019–2023»
+  status?: string; // для сериалов: «Выходит», «Завершён»
+  studios: string[]; // студии или телеканалы
+  countries: string[];
+  originalTitle?: string;
+  originalLanguage?: string;
+  languages: string[];
+  budget?: string; // «$200 млн»
+  revenue?: string;
+  episodes?: number;
+  directors: string[]; // режиссёры / создатели сериала
+  writers: string[];
+  producers: string[];
+  music: string[];
+}
+
 export interface Details {
   item: Item;
   kind: 'movie' | 'show';
@@ -27,6 +48,7 @@ export interface Details {
   seasons: Season[];
   similar: Item[];
   logo?: string;
+  info?: DetailsInfo; // только с TMDB
   loaded: boolean; // false — пока показываем то, что знаем из карточки
 }
 

@@ -3,7 +3,7 @@
  * и логотипом; серии сезона — отдельным запросом, когда сезон выбран.
  */
 import type { Item } from '../data/types';
-import type { Details, Season } from '../data/details';
+import type { Details, DetailsInfo, Season } from '../data/details';
 import { cached, colorsFor, parseId, pickLogo, request, toItem, yearOf } from './tmdb';
 
 export async function loadDetails(item: Item): Promise<Details | null> {
@@ -11,7 +11,7 @@ export async function loadDetails(item: Item): Promise<Details | null> {
   if (!parsed) return null;
   const [type, id] = parsed;
 
-  return cached(`details2:${item.id}`, 24, async () => {
+  return cached(`details3:${item.id}`, 24, async () => {
     const append = type === 'movie' ? 'credits,similar,release_dates,images' : 'credits,similar,content_ratings,images';
     const r = await request<any>(`/${type}/${id}`, {
       append_to_response: append,
@@ -63,6 +63,7 @@ export async function loadDetails(item: Item): Promise<Details | null> {
       seasons,
       similar: similar.slice(0, 15),
       logo: pickLogo((r.images && r.images.logos) || []) || undefined,
+      info: infoOf(r, type),
       loaded: true,
     };
     return details;
@@ -148,4 +149,87 @@ function tvAge(cr: any): string | undefined {
   const ru = by('RU');
   if (ru) return plus(ru);
   return US_TV[by('US')];
+}
+
+// ---------- блок «Информация» ----------
+
+function names(list: any[] | undefined, limit = 4): string[] {
+  const out: string[] = [];
+  (list || []).forEach((x) => {
+    const n = x && (x.name as string);
+    if (n && out.indexOf(n) === -1 && out.length < limit) out.push(n);
+  });
+  return out;
+}
+
+function crew(r: any, jobs: string[], limit = 4) {
+  return names(((r.credits && r.credits.crew) || []).filter((c: any) => jobs.indexOf(c.job) !== -1), limit);
+}
+
+const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+function longDate(d?: string) {
+  if (!d) return undefined;
+  const [y, m, day] = d.split('-').map(Number);
+  return m && day ? `${day} ${MONTHS[m - 1]} ${y}` : String(y);
+}
+
+function money(v?: number) {
+  if (!v || v < 1000) return undefined;
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1).replace('.', ',').replace(',0', '')} млрд`;
+  return `$${Math.round(v / 1e6)} млн`;
+}
+
+const TV_STATUS: Record<string, string> = {
+  'Returning Series': 'Выходит',
+  'In Production': 'В производстве',
+  Planned: 'Анонсирован',
+  Ended: 'Завершён',
+  Canceled: 'Закрыт',
+};
+
+const LANGS: Record<string, string> = {
+  en: 'Английский', ru: 'Русский', uk: 'Украинский', fr: 'Французский', de: 'Немецкий', es: 'Испанский',
+  it: 'Итальянский', pt: 'Португальский', ja: 'Японский', ko: 'Корейский', zh: 'Китайский', cn: 'Китайский (кантонский)',
+  hi: 'Хинди', ar: 'Арабский', tr: 'Турецкий', pl: 'Польский', nl: 'Нидерландский', sv: 'Шведский', da: 'Датский',
+  no: 'Норвежский', fi: 'Финский', cs: 'Чешский', hu: 'Венгерский', el: 'Греческий', he: 'Иврит', th: 'Тайский',
+  id: 'Индонезийский', vi: 'Вьетнамский', fa: 'Персидский', ro: 'Румынский', bg: 'Болгарский', sr: 'Сербский',
+  hr: 'Хорватский', ka: 'Грузинский', kk: 'Казахский', be: 'Белорусский', la: 'Латынь', ml: 'Малаялам',
+  ta: 'Тамильский', te: 'Телугу', is: 'Исландский', ga: 'Ирландский', xx: 'Без слов',
+};
+
+function language(code: string, fallback?: string) {
+  return LANGS[code] || fallback || code;
+}
+
+function infoOf(r: any, type: 'movie' | 'tv'): DetailsInfo {
+  const original = r.original_title || r.original_name;
+  const title = r.title || r.name;
+  const firstYear = yearOf(r.first_air_date);
+  const lastYear = yearOf(r.last_air_date);
+  return {
+    tagline: r.tagline || undefined,
+    score: r.vote_count >= 10 ? Math.round(r.vote_average * 10) : undefined,
+    votes: r.vote_count || undefined,
+    released:
+      type === 'movie'
+        ? longDate(r.release_date)
+        : firstYear
+          ? r.status === 'Returning Series' || !lastYear || lastYear === firstYear
+            ? `${firstYear}${r.status === 'Returning Series' ? ' — н. в.' : ''}`
+            : `${firstYear}–${lastYear}`
+          : undefined,
+    status: type === 'tv' ? TV_STATUS[r.status] : undefined,
+    studios: type === 'tv' && r.networks && r.networks.length ? names(r.networks, 3) : names(r.production_companies, 3),
+    countries: names(r.production_countries, 3),
+    originalTitle: original && original !== title ? original : undefined,
+    originalLanguage: r.original_language ? language(r.original_language) : undefined,
+    languages: ((r.spoken_languages as any[]) || []).map((l) => language(l.iso_639_1, l.english_name)).slice(0, 8),
+    budget: money(r.budget),
+    revenue: money(r.revenue),
+    episodes: r.number_of_episodes || undefined,
+    directors: type === 'movie' ? crew(r, ['Director']) : names(r.created_by),
+    writers: crew(r, ['Screenplay', 'Writer', 'Novel', 'Story', 'Author']),
+    producers: crew(r, ['Producer', 'Executive Producer'], 3),
+    music: crew(r, ['Original Music Composer', 'Music'], 2),
+  };
 }

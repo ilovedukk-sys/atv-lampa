@@ -30,4 +30,6 @@ export default defineConfig({
     stripCrossorigin(),
   ],
   server: { port: 5173 },
+  // PROFILE=1 — сборка без сжатия, чтобы в профиле (scripts/profile.mjs) были видны имена функций
+  build: process.env.PROFILE ? { minify: false } : {},
 });
