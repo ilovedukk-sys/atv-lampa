@@ -614,7 +614,6 @@ html.flat .card--poster .card__caption { will-change: auto; }
   from { opacity: 0; transform: translate3d(0, 34px, 0); }
   to { opacity: 1; transform: none; }
 }
-
 /* ---------- бейджи и доп. кнопки ---------- */
 
 .badge {

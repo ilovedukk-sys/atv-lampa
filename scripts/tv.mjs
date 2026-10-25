@@ -23,9 +23,12 @@ if (process.argv[2] === 'bench') {
   const ares = (tool, args) =>
     spawnSync(process.execPath, [`node_modules/@webos-tools/cli/bin/${tool}.js`, ...args], { stdio: 'inherit' });
   ares('ares-launch', ['--device', DEVICE, '--close', info.id]);
-  ares('ares-launch', ['--device', DEVICE, info.id, '-p', '{"bench":1}']);
-  console.log('Идёт замер, ~110 секунд…');
-  await new Promise((r) => setTimeout(r, 110000));
+  // BENCH_PARAMS='{"exp":1}' — опыт с вариантами CSS (см. src/core/bench.ts), BENCH_WAIT — секунд ждать
+  const params = { bench: 1, ...JSON.parse(process.env.BENCH_PARAMS || '{}') };
+  const seconds = Number(process.env.BENCH_WAIT || 110);
+  ares('ares-launch', ['--device', DEVICE, info.id, '-p', JSON.stringify(params)]);
+  console.log(`Идёт замер, ~${seconds} секунд…`);
+  await new Promise((r) => setTimeout(r, seconds * 1000));
   process.argv[2] = 'screenshot';
 }
 

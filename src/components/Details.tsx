@@ -26,6 +26,7 @@ interface Props {
   onWatch: (item: Item, opts?: WatchOptions) => void;
   onClose: () => void;
   notify: (text: string) => void;
+  warm?: boolean; // «разогрев»: скрытый экран, чтобы первое настоящее открытие фильма не тормозило (см. App)
 }
 
 const fromTmdb = (item: Item) => hasTmdb && !!parseId(item.id);
@@ -33,7 +34,7 @@ const fromTmdb = (item: Item) => hasTmdb && !!parseId(item.id);
 // Сколько длится появление экрана (riseIn в app.css) — до его конца нижние разделы не строим
 const OPEN_ANIMATION_MS = 450;
 
-export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }: Props) {
+export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, warm }: Props) {
   const [d, setD] = useState<Details>(() => (fromTmdb(item) ? quickDetails(item) : getDetails(item)));
   const root = useRef<HTMLDivElement>(null);
   const desc = useRef<HTMLDivElement>(null);
@@ -70,7 +71,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
     let alive = true;
     loadDetails(item)
       .then((full) => alive && full && setD(full))
-      .catch(() => alive && notify('Не удалось загрузить данные TMDB'));
+      .catch(() => alive && !warm && notify('Не удалось загрузить данные TMDB'));
     return () => {
       alive = false;
     };
@@ -78,7 +79,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }
 
   // При открытии экрана фокус — на кнопку «Смотреть»
   useEffect(() => {
-    focusFirstIn(root.current!.querySelector('.details__buttons') as HTMLElement);
+    if (!warm) focusFirstIn(root.current!.querySelector('.details__buttons') as HTMLElement);
   }, []);
 
   // «Назад»: сначала закрывает окно описания, потом сам экран

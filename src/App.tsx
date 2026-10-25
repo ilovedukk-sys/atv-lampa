@@ -16,8 +16,13 @@ import type { WatchEntry } from './core/history';
 import { benchRequested, launchParam, runBenchmark } from './core/bench';
 import { toggleSounds } from './core/sound';
 import { toggleLite } from './core/lite';
+import { loadPage } from './data/catalog';
 
 const BENCH = benchRequested();
+
+// Разогрев экрана фильма: через сколько после загрузки главной и сколько держать (нижние разделы — ~1,1 с)
+const WARM_DELAY_MS = 2000;
+const WARM_HOLD_MS = 2000;
 
 type Tab = 'search' | 'home' | 'movies' | 'shows' | 'library' | 'settings';
 
@@ -131,6 +136,29 @@ export function App() {
     }
   }, []);
 
+  /*
+   * «Разогрев» экрана фильма: через пару секунд после загрузки главной скрыто (display: none) строим
+   * экран фильма для первого слайда Top Shelf и через 2 с убираем. Код экрана выполняется заранее,
+   * и первое настоящее открытие фильма на слабом ТВ идёт так же плавно, как следующие.
+   */
+  const [warm, setWarm] = useState<Item | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const timers: number[] = [];
+    loadPage('home')
+      .then((page) => {
+        const first = page.hero[0];
+        if (!alive || !first) return;
+        timers.push(window.setTimeout(() => setWarm(first), WARM_DELAY_MS));
+        timers.push(window.setTimeout(() => setWarm(null), WARM_DELAY_MS + WARM_HOLD_MS));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+      timers.forEach(clearTimeout);
+    };
+  }, []);
+
   const homeVisible = stack.length === 0;
   const playing = stack.length > 0 && stack[stack.length - 1].type === 'player';
 
@@ -190,6 +218,19 @@ export function App() {
             notify={notify}
           />
         ),
+      )}
+
+      {warm && (
+        <DetailsScreen
+          key="warm"
+          item={warm}
+          active={false}
+          warm
+          onOpen={() => {}}
+          onWatch={() => {}}
+          onClose={() => {}}
+          notify={() => {}}
+        />
       )}
 
       <div class={`toast glass${toast ? ' is-visible' : ''}`}>{toast}</div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { CardKind, Item } from '../data/mock';
 import { attachParallax } from '../core/parallax';
+import { registerCard } from '../core/prefetch';
 import { Artwork } from './Artwork';
 
 interface Props {
@@ -13,6 +14,10 @@ export function Card({ item, kind, onSelect }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => (ref.current ? attachParallax(ref.current) : undefined), []);
+  // Задержатся на карточке — экран фильма подготовится заранее (core/prefetch)
+  useEffect(() => {
+    if (ref.current) registerCard(ref.current, item);
+  }, [item]);
 
   return (
     <div ref={ref} class={`card card--${kind}`} data-focusable onClick={() => onSelect(item)}>

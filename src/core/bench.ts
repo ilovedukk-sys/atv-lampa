@@ -18,6 +18,20 @@ const CONFIGS: Config[] = [
   { name: 'Облегчённый', cls: 'lite' },
 ];
 
+/*
+ * Опыт: только сценарии открытия фильма, по нескольку вариантов. Первый столбец — первое открытие
+ * после запуска (самое тяжёлое), второй — повторное. Сюда же можно добавить варианты CSS
+ * (класс на <html>). Запуск: BENCH_PARAMS='{"exp":1}' BENCH_WAIT=80 npm run tv:bench
+ */
+const EXPERIMENTS: Config[] = [
+  { name: 'Первое', cls: '' },
+  { name: 'Повторное', cls: '' },
+  { name: 'Облегч.', cls: 'lite' },
+];
+const EXP_SCENARIOS = ['Открыть фильм', 'Вниз к сериям', 'Назад на главную'];
+const experiment = !!launchParam('exp');
+const configs = experiment ? EXPERIMENTS : CONFIGS;
+
 interface Scenario {
   name: string;
   setup: () => void;
@@ -103,6 +117,8 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+const scenarios = experiment ? SCENARIOS.filter((x) => EXP_SCENARIOS.indexOf(x.name) !== -1) : SCENARIOS;
+
 interface Cell {
   fps: number;
   worst: number;
@@ -145,9 +161,9 @@ function show(table: Cell[][], done: boolean) {
     document.body.appendChild(box);
   }
   const color = (fps: number) => (fps >= 45 ? '#7CFC9A' : fps >= 30 ? '#FFD36B' : '#FF7B7B');
-  const head = CONFIGS.map((c) => `<th>${c.name}</th>`).join('');
-  const rows = SCENARIOS.map((s, si) => {
-    const cells = CONFIGS.map((_, ci) => {
+  const head = configs.map((c) => `<th>${c.name}</th>`).join('');
+  const rows = scenarios.map((s, si) => {
+    const cells = configs.map((_, ci) => {
       const c = table[ci] && table[ci][si];
       return c
         ? `<td><b style="color:${color(c.fps)}">${c.fps}</b> <span>${c.worst}мс${c.js ? ' · js ' + c.js : ''}</span></td>`
@@ -170,18 +186,18 @@ export async function runBenchmark() {
   // Разогрев: первый проход после запуска всегда медленнее (картинки, слои) — его не считаем
   await measure(SCENARIOS[0]);
   await measure(SCENARIOS[1]);
-  for (const cfg of CONFIGS) {
-    CONFIGS.forEach((c) => c.cls && root.classList.remove(c.cls));
+  for (const cfg of configs) {
+    configs.forEach((c) => c.cls && root.classList.remove(c.cls));
     if (cfg.cls) root.classList.add(cfg.cls);
     await wait(800);
     const row: Cell[] = [];
     table.push(row);
-    for (const s of SCENARIOS) {
+    for (const s of scenarios) {
       row.push(await measure(s));
       show(table, false);
     }
   }
-  CONFIGS.forEach((c) => c.cls && root.classList.remove(c.cls));
+  configs.forEach((c) => c.cls && root.classList.remove(c.cls));
   if (userLite) root.classList.add('lite');
   show(table, true);
   console.log('BENCH ' + JSON.stringify(table));
