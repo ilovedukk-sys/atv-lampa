@@ -15,18 +15,21 @@ import { Badge, LibraryButton, PlayButton, TextButton } from './Buttons';
 import { Card } from './Card';
 import { ShelfRow } from './ShelfRow';
 import { BackdropImage, TitleLogo } from './Hero';
+import { finished, lastWatch, remaining, useHistoryVersion } from '../core/history';
+import type { WatchOptions } from '../App';
 
 interface Props {
   item: Item;
   active: boolean; // верхний экран (остальные скрыты, но помнят состояние)
   onOpen: (item: Item) => void;
+  onWatch: (item: Item, opts?: WatchOptions) => void;
   onClose: () => void;
   notify: (text: string) => void;
 }
 
 const fromTmdb = (item: Item) => hasTmdb && !!parseId(item.id);
 
-export function DetailsScreen({ item, active, onOpen, onClose, notify }: Props) {
+export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify }: Props) {
   const [d, setD] = useState<Details>(() => (fromTmdb(item) ? quickDetails(item) : getDetails(item)));
   const root = useRef<HTMLDivElement>(null);
   const desc = useRef<HTMLDivElement>(null);
@@ -87,8 +90,18 @@ export function DetailsScreen({ item, active, onOpen, onClose, notify }: Props) 
 
   const soon = (what: string, stage: number) => () => notify(`${what} появится на этапе ${stage}`);
   const it = d.item;
-  const playLabel =
-    it.progress !== undefined ? 'Продолжить' : d.kind === 'show' ? 'Воспроизвести С1, Э1' : 'Воспроизвести';
+
+  // «Продолжить» — если начали смотреть и не досмотрели (история обновляется после плеера)
+  useHistoryVersion();
+  const last = lastWatch(it.id);
+  const resumable = !!last && last.time > 30 && !finished(last);
+  const playLabel = resumable ? 'Продолжить' : d.kind === 'show' ? 'Смотреть сериал' : 'Смотреть';
+  const startWatch = () => onWatch(it, resumable ? { resume: last } : {});
+  const pickEpisode = (ep: Item) => {
+    const m = /:s(\d+)e(\d+)$/.exec(ep.id);
+    if (!m) return notify('Серии загружаются…');
+    onWatch(it, { episode: { season: Number(m[1]), episode: Number(m[2]) } });
+  };
 
   return (
     <div ref={root} class={`screen details${active ? '' : ' is-hidden'}`} data-screen>
@@ -105,27 +118,28 @@ export function DetailsScreen({ item, active, onOpen, onClose, notify }: Props) 
               <p>{d.description || (d.loaded ? 'Описание отсутствует.' : '…')}</p>
               <div class="details__more">ЕЩЁ</div>
             </div>
-            {it.progress !== undefined && (
+            {resumable && (
               <div class="details__progress">
                 <span class="details__bar">
-                  <i style={{ width: `${Math.round(it.progress * 100)}%` }} />
+                  <i style={{ width: `${Math.round((last!.time / last!.duration) * 100)}%` }} />
                 </span>
-                {it.episode}
+                {[last!.label, remaining(last!)].filter(Boolean).join(' · ')}
               </div>
             )}
             <div class="details__buttons">
-              <PlayButton label={playLabel} onClick={soon('Плеер', 5)} />
+              <PlayButton label={playLabel} onClick={startWatch} />
               <LibraryButton
                 item={it}
                 onChange={(added) => notify(added ? `«${it.title}» в медиатеке` : `«${it.title}» убран из медиатеки`)}
               />
-              <TextButton label="Трейлер" onClick={soon('Трейлер', 5)} />
+              {resumable && <TextButton label="Раздачи" onClick={() => onWatch(it)} />}
+              <TextButton label="Трейлер" onClick={soon('Трейлер', 7)} />
             </div>
           </div>
         </section>
 
         {shown >= 1 && d.kind === 'show' && d.seasons.length > 0 && (
-          <Seasons d={d} onSelect={soon('Плеер', 5)} />
+          <Seasons d={d} onSelect={pickEpisode} />
         )}
         {shown >= 2 && d.cast.length > 0 && (
           <ShelfRow

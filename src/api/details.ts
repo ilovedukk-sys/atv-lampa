@@ -11,7 +11,7 @@ export async function loadDetails(item: Item): Promise<Details | null> {
   if (!parsed) return null;
   const [type, id] = parsed;
 
-  return cached(`details:${item.id}`, 24, async () => {
+  return cached(`details2:${item.id}`, 24, async () => {
     const append = type === 'movie' ? 'credits,similar,release_dates,images' : 'credits,similar,content_ratings,images';
     const r = await request<any>(`/${type}/${id}`, {
       append_to_response: append,

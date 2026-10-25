@@ -9,6 +9,7 @@
  *   data-scroll-x — горизонтальная лента (полка с карточками)
  *   data-scroll-y — вертикальная лента всей страницы
  *   data-section  — блок страницы, к которому «прилипает» вертикальная прокрутка
+ *                   (на высоте 150px; у страницы с data-section-offset="N" — на высоте N)
  *   data-focus-group + data-focus-remember — группа, которая помнит последний выбранный элемент
  *   data-screen   — экран (главная, фильм, окно). Стрелки не уводят фокус за пределы экрана
  *   data-sidebar  — боковая панель: открывается влево с крайнего элемента (или «Назад»),
@@ -303,7 +304,9 @@ function ensureVisible(el: HTMLElement) {
   if (page) {
     const section = el.closest('[data-section]') as HTMLElement | null;
     const top = section ? offsetWithin(section, page, 'y') : 0;
-    const t = section && section.hasAttribute('data-section-top') ? 0 : Math.max(0, top - SECTION_TOP);
+    // data-section-offset — своя высота «прилипания» (например, у длинных списков под заголовком)
+    const stick = Number(page.getAttribute('data-section-offset')) || SECTION_TOP;
+    const t = section && section.hasAttribute('data-section-top') ? 0 : Math.max(0, top - stick);
     setScroll(page, t, 'y');
     const screen = screenOf(el);
     if (screen) screen.classList.toggle('is-scrolled', t > 0);

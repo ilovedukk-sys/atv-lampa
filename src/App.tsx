@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Item } from './data/types';
+import type { Item, PlayRequest } from './data/types';
 import { heroItems, shelves } from './data/mock';
 import { focus, focusFirstIn, getFocused, openSidebar, startFocusEngine } from './core/focus';
 import { hasTmdb } from './api/tmdb';
@@ -10,6 +10,9 @@ import { LibraryView } from './components/LibraryView';
 import { SearchView } from './components/SearchView';
 import { DetailsScreen } from './components/Details';
 import { GenreScreen } from './components/GenreScreen';
+import { Sources, type Episode } from './components/Sources';
+import { Player } from './components/Player';
+import type { WatchEntry } from './core/history';
 import { benchRequested, launchParam, runBenchmark } from './core/bench';
 import { toggleSounds } from './core/sound';
 import { toggleLite } from './core/lite';
@@ -18,10 +21,19 @@ const BENCH = benchRequested();
 
 type Tab = 'search' | 'home' | 'movies' | 'shows' | 'library' | 'settings';
 
-/** Экран поверх главной: фильм/сериал или подборка жанра. */
+/** Экран поверх главной: фильм/сериал, подборка жанра, выбор раздачи или плеер. */
 interface Entry {
-  type: 'details' | 'genre';
+  type: 'details' | 'genre' | 'sources' | 'player';
   item: Item;
+  episode?: Episode;
+  resume?: WatchEntry;
+  play?: PlayRequest;
+}
+
+/** Как смотреть: выбрать серию или продолжить с того же места. */
+export interface WatchOptions {
+  episode?: Episode;
+  resume?: WatchEntry;
 }
 
 export function App() {
@@ -48,6 +60,21 @@ export function App() {
     }
     savedFocus.current.push(getFocused());
     setStack((s) => s.concat({ type, item }));
+  };
+
+  // «Смотреть» → экран выбора раздачи (для «Продолжить» он сразу подключается к той же раздаче)
+  const watch = (item: Item, opts: WatchOptions = {}) => {
+    savedFocus.current.push(getFocused());
+    setStack((s) => s.concat({ type: 'sources', item, episode: opts.episode, resume: opts.resume }));
+  };
+
+  /*
+   * Плеер. replace — заменить экран раздач (фильм из одного файла): «Назад» из плеера
+   * ведёт сразу к фильму. Иначе плеер поверх списка серий — «Назад» возвращает к сериям.
+   */
+  const play = (req: PlayRequest, replace: boolean) => {
+    if (!replace) savedFocus.current.push(getFocused());
+    setStack((s) => (replace ? s.slice(0, -1) : s).concat({ type: 'player', item: req.item, play: req }));
   };
 
   const closeTop = () => {
@@ -105,9 +132,10 @@ export function App() {
   }, []);
 
   const homeVisible = stack.length === 0;
+  const playing = stack.length > 0 && stack[stack.length - 1].type === 'player';
 
   return (
-    <div class="app">
+    <div class={`app${playing ? ' is-playing' : ''}`}>
       <div class={`screen home${homeVisible ? '' : ' is-hidden'}`} data-screen>
         {tab === 'home' || tab === 'movies' || tab === 'shows' ? (
           <BrowseView
@@ -131,7 +159,19 @@ export function App() {
       </div>
 
       {stack.map((entry, i) =>
-        entry.type === 'genre' ? (
+        entry.type === 'player' ? (
+          <Player key={'player:' + i} req={entry.play!} active={i === stack.length - 1} onClose={closeTop} />
+        ) : entry.type === 'sources' ? (
+          <Sources
+            key={'sources:' + entry.item.id + ':' + i}
+            item={entry.item}
+            episode={entry.episode}
+            resume={entry.resume}
+            active={i === stack.length - 1}
+            onPlay={play}
+            onClose={closeTop}
+          />
+        ) : entry.type === 'genre' ? (
           <GenreScreen
             key={entry.item.id + ':' + i}
             genre={entry.item}
@@ -145,6 +185,7 @@ export function App() {
             item={entry.item}
             active={i === stack.length - 1}
             onOpen={openItem}
+            onWatch={watch}
             onClose={closeTop}
             notify={notify}
           />

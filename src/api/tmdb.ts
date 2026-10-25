@@ -131,6 +131,7 @@ export function toItem(r: any, type?: 'movie' | 'tv'): Item | null {
     tmdbId: r.id,
     kind: media === 'tv' ? 'show' : 'movie',
     title: r.title || r.name || '',
+    originalTitle: r.original_title || r.original_name || undefined,
     meta: [genre, year].filter(Boolean).join(' · '),
     description: r.overview || '',
     colors: colorsFor(id),

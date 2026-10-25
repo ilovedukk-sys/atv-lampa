@@ -3,6 +3,7 @@
 export interface Item {
   id: string; // 'movie:123', 'tv:456', или id временных данных
   title: string;
+  originalTitle?: string; // название в оригинале — для поиска раздач
   kind?: 'movie' | 'show';
   meta: string; // строка под названием: «Драма · 2024»
   description?: string;
@@ -34,4 +35,21 @@ export interface Shelf {
 export interface Page {
   hero: Item[];
   shelves: Shelf[];
+}
+
+/** Файл внутри раздачи TorrServer. */
+export interface TorrentFile {
+  id: number;
+  path: string;
+  length: number;
+}
+
+/** Что запустить в плеере: файл раздачи (и соседние файлы — для следующей серии и субтитров). */
+export interface PlayRequest {
+  item: Item; // фильм или сериал
+  hash: string;
+  link: string;
+  files: TorrentFile[]; // видеофайлы раздачи по порядку
+  index: number; // какой из них играть
+  subs: TorrentFile[]; // субтитры .srt из той же раздачи
 }

@@ -932,3 +932,225 @@ html.flat .card--poster .card__caption { will-change: auto; }
 }
 .settings__about b { display: block; margin-bottom: 4px; font-size: 22px; color: var(--text-secondary); }
 .settings__tmdb { font-size: 17px; }
+.settings__group {
+  margin: 10px 0 14px 4px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.settings + .settings { margin-top: 30px; }
+
+/* ---------- окно ввода текста ---------- */
+
+.input__panel { width: 1240px; padding: 50px 60px 44px; border-radius: 30px; }
+.input__panel h2 { margin: 0; font-size: 40px; font-weight: 700; }
+.input__hint { margin-top: 8px; font-size: 21px; color: var(--text-secondary); }
+.input__field { width: 100%; margin: 26px 0 30px; font-size: 38px; }
+.kb__key--done { background: rgba(255, 255, 255, 0.22); color: #fff; }
+
+/* ---------- выбор раздачи ---------- */
+
+.sources__side { position: absolute; top: 80px; left: var(--safe-x); width: 420px; }
+.sources__poster {
+  width: 300px;
+  height: 450px;
+  border-radius: var(--radius-card);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.sources__title { margin-top: 30px; font-size: 38px; font-weight: 700; line-height: 1.15; }
+.sources__sub { margin-top: 8px; font-size: 24px; color: var(--text-secondary); }
+
+/* Список справа от постера; каждая строка — отдельный «раздел» для прокрутки */
+.sources__list { padding-left: 560px; }
+.sources__head { padding: 80px 0 24px; }
+.sources__head h2 { margin: 0 0 22px; font-size: 48px; font-weight: 700; }
+.sources__release { margin-top: -10px; font-size: 21px; color: var(--text-tertiary); width: 1240px; }
+.sources__chips { display: flex; align-items: center; }
+.sources__count { margin-left: 18px; font-size: 22px; color: var(--text-tertiary); }
+.sources__note { width: 1240px; padding: 16px 4px; font-size: 19px; color: var(--text-tertiary); }
+.sources__empty { position: absolute; top: 300px; left: 560px; width: 1180px; }
+.sources__empty .message__text { max-width: none; }
+.sources__back { margin-top: 36px; }
+.sources > .loading {
+  position: absolute;
+  top: 0;
+  left: 560px;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip {
+  height: 54px;
+  padding: 0 26px;
+  margin-right: 12px;
+  border-radius: 27px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 22px;
+  font-weight: 600;
+  transition: transform 0.25s var(--spring), background 0.15s, color 0.15s;
+}
+.chip.is-active { background: rgba(255, 255, 255, 0.28); color: #fff; }
+.chip.is-focused { background: #fff; color: #000; transform: scale(1.08); }
+
+.release {
+  display: flex;
+  align-items: center;
+  width: 1240px;
+  min-height: 104px;
+  padding: 16px 28px;
+  margin-bottom: 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.07);
+  transition: transform 0.3s var(--spring), background 0.2s, color 0.2s;
+}
+.release.is-focused { background: #fff; color: #000; transform: scale(1.02); }
+.release__main { flex: 1; min-width: 0; }
+.release__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.release__meta { margin-top: 8px; font-size: 19px; color: var(--text-tertiary); }
+.release__meta .badge { margin-right: 8px; font-size: 15px; line-height: 22px; }
+.release__side { margin-left: 30px; text-align: right; white-space: nowrap; }
+.release__size { font-size: 24px; font-weight: 600; }
+.release__seeds { margin-top: 4px; font-size: 19px; color: #6fd38a; }
+.release__seeds.is-low { color: #e0a050; }
+.release__seeds.is-saved { color: var(--text-secondary); }
+.release.is-focused .release__meta,
+.release.is-focused .release__seeds { color: rgba(0, 0, 0, 0.6); }
+.release.is-focused .badge { border-color: rgba(0, 0, 0, 0.45); color: rgba(0, 0, 0, 0.75); }
+.release--file .release__title { font-size: 26px; }
+
+/* ---------- плеер ---------- */
+
+/*
+ * Пока идёт видео, всё остальное прячем: телевизору не нужно держать под видео
+ * готовые слои главной и экрана фильма. Одно переключение при входе/выходе — дешевле,
+ * чем композиция лишних слоёв каждый кадр.
+ */
+.app.is-playing > .screen:not(.player) { visibility: hidden; }
+
+.player { background: #000; }
+.player__video { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; background: #000; }
+
+.player__center {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.player__error .message__text { max-width: 1000px; }
+.player__hint { margin-top: 24px; font-size: 20px; color: var(--text-tertiary); }
+
+/* Полоса времени снизу, как в tvOS: появляется при нажатиях и прячется сама */
+.player__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 120px var(--safe-x) 64px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.75) 100%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.player__bar.is-visible { opacity: 1; }
+.player__title { font-size: 34px; font-weight: 700; }
+.player__sub { margin-top: 4px; font-size: 22px; color: var(--text-secondary); }
+.player__track {
+  position: relative;
+  height: 10px;
+  margin-top: 24px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: visible;
+}
+.player__buffered,
+.player__played {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  transform-origin: 0 0;
+}
+.player__buffered { background: rgba(255, 255, 255, 0.35); }
+.player__played { background: #fff; }
+.player__scrub {
+  position: absolute;
+  bottom: 22px;
+  margin-left: -60px;
+  width: 120px;
+  padding: 6px 0;
+  border-radius: 10px;
+  background: #fff;
+  color: #000;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+.player__times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.player__note { color: #fff; }
+
+.player__subs {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  bottom: 90px;
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  white-space: pre-line;
+  /* Чёткая обводка без размытия — размытая тень на крупном тексте дорога для ТВ */
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+}
+.player__subs.is-raised { bottom: 290px; }
+
+/* Панель «Субтитры / Аудио» сверху */
+.player__panel {
+  position: absolute;
+  top: 50px;
+  left: var(--safe-x);
+  right: var(--safe-x);
+  padding: 34px 44px 26px;
+  border-radius: 30px;
+}
+.player__row { display: flex; flex-wrap: wrap; align-items: center; padding-left: 190px; margin-bottom: 8px; }
+.player__row .chip { margin-bottom: 12px; }
+.player__rowlabel {
+  width: 190px;
+  margin: 0 0 12px -190px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.player__empty { font-size: 22px; color: var(--text-tertiary); }
+.player__panel .player__hint { margin-top: 6px; }
