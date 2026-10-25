@@ -198,7 +198,10 @@ function candidates(from: HTMLElement, dir: Direction): ArrayLike<Element> {
     for (let i = 0; i < list.length; i++) out.push(list[i]);
   };
   for (let j = idx - 1; j <= idx + 1; j++) {
-    if (sections[j]) add(sections[j].querySelectorAll('[data-focusable]'));
+    if (!sections[j]) continue;
+    // Раздел может сам быть кнопкой (строка списка раздач) — тогда внутри него кнопок нет
+    if (sections[j].hasAttribute('data-focusable')) out.push(sections[j]);
+    add(sections[j].querySelectorAll('[data-focusable]'));
   }
   return out;
 }

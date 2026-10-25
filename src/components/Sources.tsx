@@ -233,7 +233,7 @@ function ReleaseList(props: {
     <div class="page sources__list" data-scroll-y data-section-offset={LIST_TOP}>
       <section class="sources__head" data-section data-section-top>
         <h2>Выберите раздачу</h2>
-        <div class="sources__chips" data-focus-group>
+        <div class="sources__chips" data-focus-group data-focus-remember>
           {chips.map((f) => (
             <Chip key={f.id} label={f.label} active={f.id === filter} onPick={() => props.setFilter(f.id)} />
           ))}
