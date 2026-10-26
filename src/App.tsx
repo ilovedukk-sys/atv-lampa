@@ -172,6 +172,7 @@ export function App() {
             visible={homeVisible}
             bench={BENCH}
             onOpen={openItem}
+            onWatch={watch}
             notify={notify}
             autoFocus={tab === 'home' && !getFocused()}
           />

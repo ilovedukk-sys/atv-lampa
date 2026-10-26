@@ -9,6 +9,8 @@ import { focusFirstIn } from '../core/focus';
 import { HERO_INTERVAL, Hero, HeroBackdrop } from './Hero';
 import { ShelfRow } from './ShelfRow';
 import { Message, Spinner } from './Spinner';
+import { finished, lastWatch } from '../core/history';
+import type { WatchOptions } from '../App';
 
 
 interface Props {
@@ -16,11 +18,12 @@ interface Props {
   visible: boolean; // главная не скрыта экраном фильма
   bench: boolean;
   onOpen: (item: Item) => void;
+  onWatch: (item: Item, opts?: WatchOptions) => void;
   notify: (text: string) => void;
   autoFocus: boolean; // поставить фокус на Top Shelf, когда страница загрузится
 }
 
-export function BrowseView({ tab, visible, bench, onOpen, notify, autoFocus }: Props) {
+export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoFocus }: Props) {
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -88,7 +91,11 @@ export function BrowseView({ tab, visible, bench, onOpen, notify, autoFocus }: P
           <Hero
             items={page.hero}
             index={heroIndex}
-            onPlay={(item) => notify(`Плеер для «${item.title}» появится на этапе 5`)}
+            onPlay={(item) => {
+              // Начинали смотреть — продолжаем с того же места, иначе выбор раздачи
+              const last = lastWatch(item.id);
+              onWatch(item, last && last.time > 30 && !finished(last) ? { resume: last } : {});
+            }}
             onInfo={onOpen}
             onNext={() => setHeroIndex((i) => (i + 1) % page.hero.length)}
             notify={notify}
