@@ -130,7 +130,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
   return (
     <div ref={root} class={`screen details${active ? '' : ' is-hidden'}`} data-screen>
       <div class="backdrop__slide">
-        <BackdropImage item={it} soft={false} />
+        <BackdropImage item={it} />
       </div>
 
       <div class="page" data-scroll-y>

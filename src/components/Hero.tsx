@@ -33,23 +33,29 @@ function ProgressFill() {
 }
 
 /**
- * Полноэкранная картинка фона (Top Shelf, экран фильма): чёткий кадр с затемнением
- * и «размытый» вариант для прокрутки (см. .backdrop__sharp / .backdrop__soft в app.css).
+ * Полноэкранная картинка фона (Top Shelf, экран фильма): кадр с затемнением под текст.
+ * fade — цвет, в который кадр переходит внизу (фон под полками на главной, как в tvOS 26).
  */
-export function BackdropImage({ item, soft: withSoft = true }: { item: Item; soft?: boolean }) {
+export function BackdropImage({ item, fade }: { item: Item; fade?: string }) {
   const photo = photoFor(item, 'hero');
   const fallback = photo ? '' : artImage(item.id, item.colors, 'hero');
-  // Маленький кадр (300 px), растянутый на экран, — дешёвая замена размытию
-  const soft = withSoft ? img(item.backdrop, 'w300') || fallback : '';
   return (
-    <>
-      <div class="backdrop__sharp">
-        <img class="backdrop__img" src={photo || fallback} alt="" />
-        {photo && <div class="backdrop__shade" />}
-      </div>
-      {/* На экране фильма размытый вариант не нужен — не скачиваем и не держим в памяти */}
-      {soft && <img class="backdrop__soft" src={soft} alt="" />}
-    </>
+    <div class="backdrop__sharp">
+      <img class="backdrop__img" src={photo || fallback} alt="" />
+      {photo && <div class="backdrop__shade" style={fade ? { background: shadeInto(fade) } : undefined} />}
+    </div>
+  );
+}
+
+/**
+ * Затемнение слева под текст и сверху под панель, внизу — переход в цвет фона страницы.
+ * Переход в цвет — верхний слой: иначе затемнение слева легло бы поверх и на стыке с фоном была бы граница.
+ */
+function shadeInto(color: string) {
+  return (
+    `linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, ${color} 100%),` +
+    'linear-gradient(90deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 70%),' +
+    'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 22%)'
   );
 }
 
@@ -58,7 +64,7 @@ export function BackdropImage({ item, soft: withSoft = true }: { item: Item; sof
  * Держим на экране максимум два слайда: новый плавно проявляется поверх старого,
  * потом старый удаляется — слабому ТВ не приходится хранить все фоны сразу.
  */
-export function HeroBackdrop({ items, index }: { items: Item[]; index: number }) {
+export function HeroBackdrop({ items, index, tint }: { items: Item[]; index: number; tint?: string }) {
   const [prev, setPrev] = useState<number | null>(null);
   const shown = useRef(index);
 
@@ -83,10 +89,10 @@ export function HeroBackdrop({ items, index }: { items: Item[]; index: number })
   const visible = prev === null || !items[prev] ? [index] : [prev, index];
 
   return (
-    <div class="backdrop">
+    <div class="backdrop" data-scroll-follow>
       {visible.map((i) => (
         <div key={items[i].id} class={`backdrop__slide${i === index && prev !== null ? ' is-entering' : ''}`}>
-          <BackdropImage item={items[i]} />
+          <BackdropImage item={items[i]} fade={tint} />
         </div>
       ))}
     </div>

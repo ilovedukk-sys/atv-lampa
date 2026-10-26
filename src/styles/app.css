@@ -46,15 +46,19 @@ button {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
 }
-
 /*
- * Фон из двух слоёв, как в tvOS:
- *   .backdrop__sharp — чёткий кадр + затемнение под текст (рисуются вместе, один слой);
- *   .backdrop__soft  — тот же кадр в маленьком разрешении, растянутый на весь экран:
- *                      выглядит размытым, а стоит почти ничего (настоящий blur на webOS 4 дорог).
- * При прокрутке вниз чёткий слой растворяется, размытый проявляется приглушённым.
- * В покое видеочип рисует только один из них (слой с прозрачностью 0 пропускается).
+ * Как в tvOS 26: при прокрутке вниз кадр Top Shelf уезжает вверх вместе со страницей
+ * (сверху остаётся его полоска с названием), а полки лежат на спокойном цвете из кадра (.browse__bg).
+ * Сдвиг — transform готового слоя синхронно со страницей (та же длительность и кривая): видеочип
+ * просто двигает картинку, ничего не перерисовывая. Раньше кадр гас и проявлялся размытый слой —
+ * это два полноэкранных слоя с прозрачностью, а теперь один и без прозрачности.
  */
+.home .backdrop {
+  transition: transform 0.6s var(--ease-out);
+  will-change: transform;
+}
+.browse__bg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; }
+
 .backdrop__slide {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -62,25 +66,12 @@ button {
 .backdrop__sharp {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  transition: opacity 0.4s var(--ease-out); /* короче — меньше кадров с двумя полноэкранными слоями */
-  will-change: opacity;
 }
-.is-scrolled .backdrop__sharp { opacity: 0; }
-.backdrop__soft {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1920px;
-  height: 1080px;
-  object-fit: cover;
-  opacity: 0;
+/* На экране фильма — простое приглушение кадра при прокрутке */
+.details .backdrop__sharp {
   transition: opacity 0.4s var(--ease-out);
   will-change: opacity;
 }
-.is-scrolled .backdrop__soft { opacity: 0.42; }
-/* На экране фильма — простое приглушение без размытого слоя: при спуске к сериям одновременно
-   грузятся кадры серий, и смена двух слоёв на весь экран давала 20 fps вместо 38 */
-.details .backdrop__soft { display: none; }
 .details.is-scrolled .backdrop__sharp { opacity: 0.3; }
 
 /* «Наезд камеры» (эффект Кена Бёрнса) пробовали: на webOS 4 прокрутка падала с 56 до 18 fps — отказались. */
@@ -132,9 +123,7 @@ button {
   bottom: 40px;
   width: 1100px;
 }
-.hero__info, .hero__dots { transition: opacity 0.4s; will-change: opacity; }
-.is-scrolled .hero__info,
-.is-scrolled .hero__dots { opacity: 0; }
+/* Название и кнопки не гаснут при прокрутке: уезжают вверх вместе с кадром, как в tvOS 26 */
 
 .hero__text { animation: heroIn 0.9s var(--ease-out); }
 
@@ -552,7 +541,6 @@ html.lite .card.is-shining .card__frame:after { display: none; }
 html.lite .details__info { animation: none; }
 html.lite .hero__dots i b { display: none; }
 html.lite .hero__dots i.is-active { background: #fff; }
-html.lite .backdrop__soft { display: none; }
 
 /*
  * Минимальный режим (html.lite.ultra) — для самых слабых ТВ. Каждая анимация — это десятки кадров,
@@ -576,8 +564,7 @@ html.ultra .glass {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
-html.ultra .hero__info,
-html.ultra .hero__dots { will-change: auto; } /* без анимаций отдельные слои не нужны */
+
 
 /* Варианты замера: без картинок / без фона Top Shelf */
 html.noimg .art--photo .art__bg { background-image: none !important; }

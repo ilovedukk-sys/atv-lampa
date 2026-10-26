@@ -11,8 +11,13 @@ import { ShelfRow } from './ShelfRow';
 import { Message, Spinner } from './Spinner';
 import { finished, lastWatch } from '../core/history';
 import { isUltra } from '../core/lite';
+import { calmHex, tintOf } from '../core/color';
+import { img } from '../api/tmdb';
 import type { WatchOptions } from '../App';
 
+
+const DEFAULT_TINT = '#1f2229';
+const FIRST_SHELF_STICK = 430;
 
 interface Props {
   tab: BrowseTab;
@@ -78,6 +83,20 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
 
   visibleRef.v = visible;
 
+  // Цвет фона под полками — из кадра текущего слайда (в минимальном режиме — без расчёта)
+  const heroItem = page && page.hero[heroIndex];
+  const [tint, setTint] = useState(DEFAULT_TINT);
+  useEffect(() => {
+    if (!heroItem) return;
+    const fallback = calmHex(heroItem.colors[0]);
+    if (isUltra()) return setTint(fallback);
+    let alive = true;
+    tintOf(img(heroItem.backdrop, 'w300'), fallback).then((c) => alive && setTint(c));
+    return () => {
+      alive = false;
+    };
+  }, [heroItem && heroItem.id]);
+
   if (error) return <Message title="Нет связи с TMDB" text="Проверьте интернет и откройте вкладку ещё раз." />;
   if (!page) return <Spinner />;
   if (!page.hero.length && !page.shelves.length) {
@@ -86,7 +105,9 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
 
   return (
     <>
-      <HeroBackdrop items={page.hero} index={heroIndex} />
+      {/* Фон страницы: виден под полками, когда кадр Top Shelf уехал вверх */}
+      <div class="browse__bg" style={{ background: page.hero.length ? tint : '#000' }} />
+      <HeroBackdrop items={page.hero} index={heroIndex} tint={tint} />
       <div class="page" data-scroll-y>
         {page.hero.length > 0 ? (
           <Hero
@@ -104,8 +125,9 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
         ) : (
           <div class="page__top" />
         )}
-        {page.shelves.map((s) => (
-          <ShelfRow key={s.id} shelf={s} onSelect={onOpen} />
+        {page.shelves.map((s, i) => (
+          // Первая полка под Top Shelf встаёт ниже — сверху остаётся полоска кадра с названием, как в tvOS 26
+          <ShelfRow key={s.id} shelf={s} onSelect={onOpen} stick={i === 0 && page.hero.length ? FIRST_SHELF_STICK : undefined} />
         ))}
         <div class="page__end" />
       </div>

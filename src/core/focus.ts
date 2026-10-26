@@ -9,7 +9,9 @@
  *   data-scroll-x — горизонтальная лента (полка с карточками)
  *   data-scroll-y — вертикальная лента всей страницы
  *   data-section  — блок страницы, к которому «прилипает» вертикальная прокрутка
- *                   (на высоте 150px; у страницы с data-section-offset="N" — на высоте N)
+ *                   (на высоте 150px; у страницы с data-section-offset="N" — на высоте N;
+ *                   у раздела с data-stick="N" — на высоте N)
+ *   data-scroll-follow — элемент экрана, который едет вверх вместе со страницей (фон Top Shelf)
  *   data-focus-group + data-focus-remember — группа, которая помнит последний выбранный элемент
  *   data-screen   — экран (главная, фильм, окно). Стрелки не уводят фокус за пределы экрана
  *   data-sidebar  — боковая панель: открывается влево с крайнего элемента (или «Назад»),
@@ -309,7 +311,8 @@ function ensureVisible(el: HTMLElement) {
     const section = el.closest('[data-section]') as HTMLElement | null;
     const top = section ? offsetWithin(section, page, 'y') : 0;
     // data-section-offset — своя высота «прилипания» (например, у длинных списков под заголовком)
-    const stick = Number(page.getAttribute('data-section-offset')) || SECTION_TOP;
+    const stick =
+      Number(section && section.getAttribute('data-stick')) || Number(page.getAttribute('data-section-offset')) || SECTION_TOP;
     let t = section && section.hasAttribute('data-section-top') ? 0 : Math.max(0, top - stick);
     // Последние ряды не поднимаем выше, чем нужно: низ страницы остаётся у низа экрана,
     // а не уезжает вверх, оставляя под собой пустоту (как в tvOS)
@@ -318,7 +321,12 @@ function ensureVisible(el: HTMLElement) {
     t = Math.max(0, Math.min(t, page.offsetHeight - viewH));
     setScroll(page, t, 'y');
     const screen = screenOf(el);
-    if (screen) screen.classList.toggle('is-scrolled', t > 0);
+    if (screen) {
+      screen.classList.toggle('is-scrolled', t > 0);
+      // Фон Top Shelf уезжает вверх вместе со страницей (как в tvOS 26), дальше экрана — незачем
+      const followers = screen.querySelectorAll('[data-scroll-follow]');
+      for (let i = 0; i < followers.length; i++) setScroll(followers[i] as HTMLElement, Math.min(t, viewH), 'y');
+    }
   } else if (!el.closest('[data-sidebar]')) {
     // Панель выезжает поверх контента — прокрутку страницы не трогаем
     const screen = screenOf(el);

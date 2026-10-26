@@ -4,11 +4,12 @@ import { Card } from './Card';
 interface Props {
   shelf: Shelf;
   onSelect: (item: Item) => void;
+  stick?: number; // на какой высоте экрана встаёт полка при прокрутке (по умолчанию 150)
 }
 
-export function ShelfRow({ shelf, onSelect }: Props) {
+export function ShelfRow({ shelf, onSelect, stick }: Props) {
   return (
-    <section class={`shelf shelf--${shelf.kind}`} data-section>
+    <section class={`shelf shelf--${shelf.kind}`} data-section data-stick={stick}>
       <h2 class="shelf__title">{shelf.title}</h2>
       <div class="shelf__viewport">
         <div class="shelf__track" data-scroll-x>
