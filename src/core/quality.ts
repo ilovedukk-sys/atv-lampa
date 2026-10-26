@@ -4,6 +4,7 @@
  * Выбор в «Настройках», запоминается.
  */
 import type { ImageSize } from '../api/tmdb';
+import { isUltra } from './lite';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -40,7 +41,8 @@ export function getQuality() {
 }
 
 export function imageSizes(): Sizes {
-  return SIZES[quality];
+  // Минимальный режим — всегда самые лёгкие картинки (настройка пользователя при этом не меняется)
+  return SIZES[isUltra() ? 'low' : quality];
 }
 
 /** Следующий уровень по кругу: низкое → среднее → высокое → низкое. */

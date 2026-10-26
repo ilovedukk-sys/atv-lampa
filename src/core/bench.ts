@@ -16,6 +16,7 @@ interface Config {
 const CONFIGS: Config[] = [
   { name: 'Эффекты', cls: '' },
   { name: 'Облегчённый', cls: 'lite' },
+  { name: 'Минимальный', cls: 'lite ultra' },
 ];
 
 /*
@@ -180,15 +181,18 @@ function show(table: Cell[][], done: boolean) {
 export async function runBenchmark() {
   const table: Cell[][] = [];
   const root = document.documentElement;
-  const userLite = root.classList.contains('lite');
-  root.classList.remove('lite');
+  // Классы вариантов (их может быть несколько через пробел); выбор пользователя вернём в конце
+  const userClass = root.className;
+  const setClasses = (cls: string, on: boolean) =>
+    cls.split(' ').forEach((c) => c && root.classList.toggle(c, on));
+  configs.forEach((c) => setClasses(c.cls, false));
   show(table, false);
   // Разогрев: первый проход после запуска всегда медленнее (картинки, слои) — его не считаем
   await measure(SCENARIOS[0]);
   await measure(SCENARIOS[1]);
   for (const cfg of configs) {
-    configs.forEach((c) => c.cls && root.classList.remove(c.cls));
-    if (cfg.cls) root.classList.add(cfg.cls);
+    configs.forEach((c) => setClasses(c.cls, false));
+    setClasses(cfg.cls, true);
     await wait(800);
     const row: Cell[] = [];
     table.push(row);
@@ -197,8 +201,7 @@ export async function runBenchmark() {
       show(table, false);
     }
   }
-  configs.forEach((c) => c.cls && root.classList.remove(c.cls));
-  if (userLite) root.classList.add('lite');
+  root.className = userClass;
   show(table, true);
   console.log('BENCH ' + JSON.stringify(table));
   focusFirstIn('[data-hero]');

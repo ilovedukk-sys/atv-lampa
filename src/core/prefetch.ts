@@ -9,6 +9,7 @@ import { hasTmdb, parseId } from '../api/tmdb';
 import { loadDetails } from '../api/details';
 import { photoFor } from '../components/Artwork';
 import { onFocusChange } from './focus';
+import { isUltra } from './lite';
 
 const DWELL_MS = 700; // задержались на карточке дольше — скорее всего, откроют
 const items = new WeakMap<Element, Item>();
@@ -28,6 +29,6 @@ onFocusChange((el) => {
     done[item.id] = true;
     loadDetails(item).catch(() => delete done[item.id]);
     const backdrop = photoFor(item, 'hero');
-    if (backdrop) new Image().src = backdrop;
+    if (backdrop && !isUltra()) new Image().src = backdrop;
   }, DWELL_MS);
 });

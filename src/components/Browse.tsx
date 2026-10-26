@@ -10,6 +10,7 @@ import { HERO_INTERVAL, Hero, HeroBackdrop } from './Hero';
 import { ShelfRow } from './ShelfRow';
 import { Message, Spinner } from './Spinner';
 import { finished, lastWatch } from '../core/history';
+import { isUltra } from '../core/lite';
 import type { WatchOptions } from '../App';
 
 
@@ -61,7 +62,7 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
   // Карусель Top Shelf: через 8 с после смены слайда (совпадает с полоской прогресса),
   // если страница видна и прокручена наверх; иначе ждём, пока вернутся
   useEffect(() => {
-    if (!heroCount || bench) return;
+    if (!heroCount || bench || isUltra()) return; // минимальный режим — слайды только по кнопке «›»
     let t = 0;
     const tick = () => {
       const home = document.querySelector('.home');

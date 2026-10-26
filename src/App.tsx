@@ -15,13 +15,19 @@ import { Player } from './components/Player';
 import type { WatchEntry } from './core/history';
 import { benchRequested, launchParam, runBenchmark } from './core/bench';
 import { toggleSounds } from './core/sound';
-import { toggleLite } from './core/lite';
+import { cycleEffects, isUltra } from './core/lite';
 import { loadPage } from './data/catalog';
 
 const BENCH = benchRequested();
 
 // Разогрев экрана фильма: через сколько после загрузки главной и сколько держать (нижние разделы — ~1,1 с)
 const WARM_DELAY_MS = 2000;
+
+const EFFECTS_TOAST = {
+  full: 'Все эффекты включены',
+  lite: 'Облегчённый режим: без тяжёлых эффектов',
+  ultra: 'Минимальный режим: для самых слабых ТВ',
+};
 const WARM_HOLD_MS = 2000;
 
 type Tab = 'search' | 'home' | 'movies' | 'shows' | 'kids' | 'library' | 'settings';
@@ -119,7 +125,7 @@ export function App() {
         notify(toggleSounds() ? 'Звуки навигации включены' : 'Звуки навигации выключены');
         e.preventDefault();
       } else if (e.keyCode === 404 || e.keyCode === 115) {
-        notify(toggleLite() ? 'Облегчённый режим: эффекты выключены' : 'Все эффекты включены');
+        notify(EFFECTS_TOAST[cycleEffects()]);
         e.preventDefault();
       }
     });
@@ -145,6 +151,7 @@ export function App() {
   useEffect(() => {
     let alive = true;
     const timers: number[] = [];
+    if (isUltra()) return; // в минимальном режиме бережём память — без разогрева
     loadPage('home')
       .then((page) => {
         const first = page.hero[0];

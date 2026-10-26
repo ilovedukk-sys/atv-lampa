@@ -117,7 +117,7 @@ button {
   transition: transform 0.6s var(--ease-out);
   will-change: transform; /* прокрутка страницы двигает готовый слой, а не перерисовывает */
 }
-.page__end { height: 240px; }
+.page__end { height: 120px; } /* отступ под последним рядом: ниже страница не прокручивается */
 
 /* ---------- Top Shelf: текст и кнопки ---------- */
 
@@ -553,6 +553,31 @@ html.lite .details__info { animation: none; }
 html.lite .hero__dots i b { display: none; }
 html.lite .hero__dots i.is-active { background: #fff; }
 html.lite .backdrop__soft { display: none; }
+
+/*
+ * Минимальный режим (html.lite.ultra) — для самых слабых ТВ. Каждая анимация — это десятки кадров,
+ * которые телевизору нужно успеть нарисовать; без них фокус и прокрутка срабатывают за один кадр.
+ * Плюс без теней и стекла — меньше перерисовки большими областями.
+ */
+html.ultra *,
+html.ultra *::before,
+html.ultra *::after {
+  transition: none !important;
+  animation: none !important;
+}
+html.ultra .spinner { animation: spin 0.9s linear infinite !important; } /* загрузка должна быть видна */
+html.ultra .card.is-focused .card__frame,
+html.ultra .btn.is-focused,
+html.ultra .sidebar,
+html.ultra .sources__poster { box-shadow: none; }
+html.ultra .sidebar__item.is-focused { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.65); }
+html.ultra .glass {
+  background: rgba(40, 40, 46, 0.97);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html.ultra .hero__info,
+html.ultra .hero__dots { will-change: auto; } /* без анимаций отдельные слои не нужны */
 
 /* Варианты замера: без картинок / без фона Top Shelf */
 html.noimg .art--photo .art__bg { background-image: none !important; }
@@ -1264,4 +1289,4 @@ html.flat .card--poster .card__caption { will-change: auto; }
 }
 .details__fade { height: 140px; margin-top: -100px; background: linear-gradient(180deg, rgba(31, 31, 34, 0), #1f1f22); }
 .details__lower .about { margin-top: 0; padding-top: 20px; }
-.details__lower .page__end { height: 760px; } /* серый фон до низа экрана при любой прокрутке */
+.details__lower .page__end { height: 80px; }

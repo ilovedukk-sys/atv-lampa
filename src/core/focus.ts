@@ -32,6 +32,7 @@ interface Rect {
 
 const SAFE_X = 80; // отступ от края экрана, как в tvOS
 const SECTION_TOP = 150; // где оказывается полка после прокрутки
+const SCREEN_H = 1080;
 
 let current: HTMLElement | null = null;
 const scrollTargets = new Map<HTMLElement, number>();
@@ -309,7 +310,12 @@ function ensureVisible(el: HTMLElement) {
     const top = section ? offsetWithin(section, page, 'y') : 0;
     // data-section-offset — своя высота «прилипания» (например, у длинных списков под заголовком)
     const stick = Number(page.getAttribute('data-section-offset')) || SECTION_TOP;
-    const t = section && section.hasAttribute('data-section-top') ? 0 : Math.max(0, top - stick);
+    let t = section && section.hasAttribute('data-section-top') ? 0 : Math.max(0, top - stick);
+    // Последние ряды не поднимаем выше, чем нужно: низ страницы остаётся у низа экрана,
+    // а не уезжает вверх, оставляя под собой пустоту (как в tvOS)
+    const screenEl = screenOf(el);
+    const viewH = screenEl ? screenEl.offsetHeight : SCREEN_H;
+    t = Math.max(0, Math.min(t, page.offsetHeight - viewH));
     setScroll(page, t, 'y');
     const screen = screenOf(el);
     if (screen) screen.classList.toggle('is-scrolled', t > 0);

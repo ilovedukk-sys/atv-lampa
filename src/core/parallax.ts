@@ -4,6 +4,7 @@
  * фон и надпись внутри смещаются в разные стороны, по стеклу бежит блик.
  */
 import { getFocused, onFocusChange } from './focus';
+import { isUltra } from './lite';
 
 const MAX_TILT = 6; // градусов
 let tilted: HTMLElement | null = null;
@@ -39,7 +40,7 @@ export function resetTilt(card: HTMLElement | null) {
 /** Подключает наклон к карточке. Возвращает функцию отключения. */
 export function attachParallax(card: HTMLElement) {
   const onMove = (e: MouseEvent) => {
-    if (!card.classList.contains('is-focused')) return;
+    if (!card.classList.contains('is-focused') || isUltra()) return;
     const r = card.getBoundingClientRect();
     const x = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
     const y = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));

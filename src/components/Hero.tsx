@@ -4,6 +4,7 @@ import { artImage } from '../core/artImage';
 import { img } from '../api/tmdb';
 import { photoFor } from './Artwork';
 import { imageSizes } from '../core/quality';
+import { isUltra } from '../core/lite';
 import { LibraryButton, PlayButton, RoundButton } from './Buttons';
 import { ChevronRightIcon, InfoIcon } from './Icons';
 
@@ -71,6 +72,7 @@ export function HeroBackdrop({ items, index }: { items: Item[]; index: number })
 
   // Заранее загружаем все фоны, чтобы смена слайда не ждала сеть
   useEffect(() => {
+    if (isUltra()) return; // минимальный режим: не держим в памяти фоны всех слайдов
     items.forEach((it) => {
       const pic = new Image();
       pic.src = photoFor(it, 'hero') || artImage(it.id, it.colors, 'hero');

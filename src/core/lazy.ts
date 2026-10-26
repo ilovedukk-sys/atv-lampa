@@ -6,6 +6,7 @@
  * <div data-src="..."> → картинка становится фоном (у <img data-src> подставляется src).
  */
 import { onFocusChange } from './focus';
+import { isUltra } from './lite';
 
 let observer: IntersectionObserver | null = null;
 
@@ -80,14 +81,17 @@ function preloadAround(el: HTMLElement) {
   const cards = row.querySelectorAll('.card');
   let idx = -1;
   for (let i = 0; i < cards.length; i++) if (cards[i] === el) idx = i;
-  if (idx !== -1) loadRow(row, idx - BEHIND, idx + AHEAD);
+  // Минимальный режим: заранее — вдвое меньше (память слабого ТВ)
+  const ahead = isUltra() ? AHEAD / 2 : AHEAD;
+  if (idx !== -1) loadRow(row, idx - BEHIND, idx + ahead);
 
   // Соседние ряды страницы
   const rows = page.querySelectorAll('[data-section]');
   let r = 0;
   for (let i = 0; i < rows.length; i++) if (rows[i] === row) r = i;
-  for (let j = r - 1; j <= r + NEXT_ROWS; j++) {
-    if (j !== r && rows[j]) loadRow(rows[j], 0, PER_ROW - 1);
+  const next = isUltra() ? 1 : NEXT_ROWS;
+  for (let j = r - 1; j <= r + next; j++) {
+    if (j !== r && rows[j]) loadRow(rows[j], 0, (isUltra() ? ahead : PER_ROW) - 1);
   }
 }
 

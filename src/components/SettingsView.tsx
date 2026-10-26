@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'preact/hooks';
 import { soundsEnabled, toggleSounds } from '../core/sound';
-import { isLite, toggleLite } from '../core/lite';
+import { cycleEffects, EFFECTS_LABELS, getEffects, isUltra } from '../core/lite';
 import { fpsOn, toggleFps } from '../core/fps';
 import { clearCache, hasTmdb } from '../api/tmdb';
 import { cycleQuality, getQuality, QUALITY_LABELS } from '../core/quality';
@@ -81,7 +81,7 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
     {
       label: 'Качество обложек',
       hint: 'Низкое — меньше трафика и памяти, плавнее на слабых ТВ; высокое — чётче',
-      value: () => QUALITY_LABELS[getQuality()],
+      value: () => (isUltra() ? 'Низкое (мин. режим)' : QUALITY_LABELS[getQuality()]),
       // notify перерисовывает приложение — обложки сразу перезагружаются в новом размере
       action: () => notify(`Качество обложек: ${QUALITY_LABELS[cycleQuality()].toLowerCase()}`),
     },
@@ -92,10 +92,11 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
       action: toggleSounds,
     },
     {
-      label: 'Облегчённый режим',
-      hint: 'Без размытого фона и анимаций — плавнее на слабых ТВ. Зелёная кнопка',
-      value: () => onOff(isLite()),
-      action: toggleLite,
+      label: 'Эффекты',
+      hint: 'Облегчённый — без размытия и выплывания; минимальный — для самых слабых ТВ: без анимаций и теней. Зелёная кнопка',
+      value: () => EFFECTS_LABELS[getEffects()],
+      // notify перерисовывает приложение — в минимальном режиме обложки сразу станут легче
+      action: () => notify(`Эффекты: ${EFFECTS_LABELS[cycleEffects()].toLowerCase()}`),
     },
     {
       label: 'Счётчик FPS',

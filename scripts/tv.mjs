@@ -25,7 +25,7 @@ if (process.argv[2] === 'bench') {
   ares('ares-launch', ['--device', DEVICE, '--close', info.id]);
   // BENCH_PARAMS='{"exp":1}' — опыт с вариантами CSS (см. src/core/bench.ts), BENCH_WAIT — секунд ждать
   const params = { bench: 1, ...JSON.parse(process.env.BENCH_PARAMS || '{}') };
-  const seconds = Number(process.env.BENCH_WAIT || 110);
+  const seconds = Number(process.env.BENCH_WAIT || 170); // три режима ≈ 2,5 минуты
   ares('ares-launch', ['--device', DEVICE, info.id, '-p', JSON.stringify(params)]);
   console.log(`Идёт замер, ~${seconds} секунд…`);
   await new Promise((r) => setTimeout(r, seconds * 1000));
