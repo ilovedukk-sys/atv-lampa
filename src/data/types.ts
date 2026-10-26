@@ -16,6 +16,7 @@ export interface Item {
   poster?: string; // постер; у актёра — фото
   backdrop?: string; // кадр 16:9; у серии — кадр из серии
   logo?: string; // логотип-название (прозрачный PNG), как в Apple TV
+  image?: string; // готовый адрес картинки не из TMDB (кадр трейлера с YouTube)
   year?: number;
   rating?: number;
   genreId?: number; // для плиток жанров

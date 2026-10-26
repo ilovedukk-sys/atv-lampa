@@ -14,6 +14,7 @@ interface Props {
 /** Какую картинку TMDB брать для каждого вида карточки; размер — по настройке «Качество обложек». */
 export function photoFor(item: Item, variant: ArtVariant): string | undefined {
   const size = imageSizes();
+  if (item.image && (variant === 'landscape' || variant === 'episode')) return item.image;
   switch (variant) {
     case 'poster':
       return img(item.poster, size.poster);

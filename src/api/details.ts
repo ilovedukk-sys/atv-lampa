@@ -3,7 +3,7 @@
  * и логотипом; серии сезона — отдельным запросом, когда сезон выбран.
  */
 import type { Item } from '../data/types';
-import type { Details, DetailsInfo, Season } from '../data/details';
+import type { Details, DetailsInfo, Season, Trailer } from '../data/details';
 import { cached, colorsFor, parseId, pickLogo, request, toItem, yearOf } from './tmdb';
 
 export async function loadDetails(item: Item): Promise<Details | null> {
@@ -11,11 +11,13 @@ export async function loadDetails(item: Item): Promise<Details | null> {
   if (!parsed) return null;
   const [type, id] = parsed;
 
-  return cached(`details3:${item.id}`, 24, async () => {
-    const append = type === 'movie' ? 'credits,similar,release_dates,images' : 'credits,similar,content_ratings,images';
+  return cached(`details4:${item.id}`, 24, async () => {
+    const append =
+      type === 'movie' ? 'credits,similar,release_dates,images,videos' : 'credits,similar,content_ratings,images,videos';
     const r = await request<any>(`/${type}/${id}`, {
       append_to_response: append,
       include_image_language: 'ru,en,null',
+      include_video_language: 'ru,en',
     });
 
     const full = toItem(r, type) as Item;
@@ -62,6 +64,7 @@ export async function loadDetails(item: Item): Promise<Details | null> {
       cast,
       seasons,
       similar: similar.slice(0, 15),
+      trailers: trailersOf(r.videos),
       logo: pickLogo((r.images && r.images.logos) || []) || undefined,
       info: infoOf(r, type),
       loaded: true,
@@ -232,4 +235,19 @@ function infoOf(r: any, type: 'movie' | 'tv'): DetailsInfo {
     producers: crew(r, ['Producer', 'Executive Producer'], 3),
     music: crew(r, ['Original Music Composer', 'Music'], 2),
   };
+}
+
+// ---------- трейлеры ----------
+
+const TRAILER_TYPES = ['Trailer', 'Teaser'];
+
+/** Трейлеры и тизеры с YouTube: сначала русские, затем официальные, трейлеры раньше тизеров, новые раньше старых. */
+function trailersOf(videos: any): Trailer[] {
+  const list: any[] = ((videos && videos.results) || []).filter(
+    (v: any) => v.site === 'YouTube' && v.key && TRAILER_TYPES.indexOf(v.type) !== -1,
+  );
+  const score = (v: any) =>
+    (v.iso_639_1 === 'ru' ? 0 : 1000) + (v.official ? 0 : 100) + TRAILER_TYPES.indexOf(v.type) * 10;
+  list.sort((a, b) => score(a) - score(b) || String(b.published_at || '').localeCompare(String(a.published_at || '')));
+  return list.slice(0, 8).map((v) => ({ key: v.key, name: v.name || 'Трейлер', lang: v.iso_639_1, type: v.type }));
 }

@@ -54,6 +54,11 @@ npm run tv:bench       # автозамер FPS на ТВ по сценария�
   `GenreScreen`, `LibraryView`, `SearchView` (экранная клавиатура), `SettingsView`, `TextInput` (ввод адресов),
   `About` (внизу экрана фильма, как в Apple TV: «Описание» — карточки, «Информация / Языки / Создатели» — панели),
   `Sources` (выбор раздачи → файлы/серии), `Player` (плеер tvOS: полоса времени, перемотка, субтитры .srt, панель ↓).
+- Трейлеры (`core/trailer.ts`, `core/webos.ts` — luna через `PalmServiceBridge`): TMDB `videos` (русские первыми) →
+  кнопка «Трейлер» и полка «Трейлеры» → запуск `youtube.leanback.v4` с `contentTarget: https://www.youtube.com/tv?v=KEY`.
+  Встроить плеер YouTube нельзя (file:// без Referer). webOS при запуске YouTube закрывает наше приложение (мало памяти),
+  поэтому перед запуском пишем `returnTo` в localStorage и при следующем старте открываем тот же фильм (≤30 мин).
+  YouTube после холодного старта сначала спрашивает профиль — это его поведение.
 - `api/torrserver.ts` — API TorrServer (запросы text/plain без preflight); `api/releases.ts` — раздачи из TorrServer,
   парсера Jackett и встроенного поиска TorrServer, разбор качества и серий; `core/history.ts` — «Продолжить».
 - Стек экранов в `App.tsx`: details → sources → player (фильм из одного файла: плеер заменяет sources).

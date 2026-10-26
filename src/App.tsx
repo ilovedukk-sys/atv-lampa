@@ -13,6 +13,7 @@ import { GenreScreen } from './components/GenreScreen';
 import { Sources, type Episode } from './components/Sources';
 import { Player } from './components/Player';
 import type { WatchEntry } from './core/history';
+import { takeReturn } from './core/trailer';
 import { benchRequested, launchParam, runBenchmark } from './core/bench';
 import { toggleSounds } from './core/sound';
 import { cycleEffects, isUltra } from './core/lite';
@@ -129,6 +130,10 @@ export function App() {
         e.preventDefault();
       }
     });
+
+    // Вернулись после трейлера, а webOS успела закрыть приложение — открываем тот же фильм
+    const back = takeReturn();
+    if (back && !BENCH) openItem(back);
 
     // Отладка: сразу открыть экран — параметр {"open":"movie:603"} или ?open=movie:603
     const openId = launchParam('open');

@@ -33,6 +33,14 @@ export interface DetailsInfo {
   music: string[];
 }
 
+/** Трейлер на YouTube. */
+export interface Trailer {
+  key: string; // id ролика YouTube
+  name: string;
+  lang: string; // 'ru', 'en'…
+  type: string; // 'Trailer' | 'Teaser'
+}
+
 export interface Details {
   item: Item;
   kind: 'movie' | 'show';
@@ -47,6 +55,7 @@ export interface Details {
   cast: Item[];
   seasons: Season[];
   similar: Item[];
+  trailers: Trailer[];
   logo?: string;
   info?: DetailsInfo; // только с TMDB
   loaded: boolean; // false — пока показываем то, что знаем из карточки
@@ -67,6 +76,7 @@ export function quickDetails(item: Item): Details {
     cast: [],
     seasons: [],
     similar: [],
+    trailers: [],
     logo: item.logo,
     loaded: false,
   };
@@ -171,6 +181,7 @@ export function getDetails(item: Item): Details {
     cast,
     seasons,
     similar,
+    trailers: [],
     loaded: true,
   };
 }

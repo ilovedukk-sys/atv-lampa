@@ -16,6 +16,8 @@ import { Card } from './Card';
 import { ShelfRow } from './ShelfRow';
 import { BackdropImage, TitleLogo } from './Hero';
 import { AboutSection, InfoSection, type MoreContent } from './About';
+import { playTrailer, trailerImage, trailerMeta } from '../core/trailer';
+import type { Trailer } from '../data/details';
 import { finished, lastWatch, remaining, useHistoryVersion } from '../core/history';
 import type { WatchOptions } from '../App';
 
@@ -58,7 +60,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
     const step = () => {
       n++;
       setShown(n);
-      if (n < 5) t = window.setTimeout(step, 160);
+      if (n < 6) t = window.setTimeout(step, 160);
     };
     // Первый раздел — после анимации открытия (0,4 с): пока она идёт, процессор ТВ ей не мешаем
     t = window.setTimeout(step, OPEN_ANIMATION_MS);
@@ -99,7 +101,18 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
     }
   }, [more]);
 
-  const soon = (what: string, stage: number) => () => notify(`${what} появится на этапе ${stage}`);
+  const trailer = (t: Trailer) => {
+    notify('Открываем трейлер в YouTube…');
+    playTrailer(t, d.item).catch((e: Error) => notify(e.message));
+  };
+  // Карточки полки «Трейлеры»: кадр ролика с YouTube, язык и вид
+  const trailerItems: Item[] = d.trailers.map((t) => ({
+    id: 'trailer:' + t.key,
+    title: t.name,
+    meta: trailerMeta(t),
+    colors: d.item.colors,
+    image: trailerImage(t),
+  }));
   const it = d.item;
 
   // «Продолжить» — если начали смотреть и не досмотрели (история обновляется после плеера)
@@ -144,7 +157,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
                 onChange={(added) => notify(added ? `«${it.title}» в медиатеке` : `«${it.title}» убран из медиатеки`)}
               />
               {resumable && <TextButton label="Раздачи" onClick={() => onWatch(it)} />}
-              <TextButton label="Трейлер" onClick={soon('Трейлер', 7)} />
+              {d.trailers.length > 0 && <TextButton label="Трейлер" onClick={() => trailer(d.trailers[0])} />}
             </div>
           </div>
         </section>
@@ -152,21 +165,27 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
         {shown >= 1 && d.kind === 'show' && d.seasons.length > 0 && (
           <Seasons d={d} onSelect={pickEpisode} />
         )}
-        {shown >= 2 && d.cast.length > 0 && (
+        {shown >= 2 && trailerItems.length > 0 && (
+          <ShelfRow
+            shelf={{ id: 'trailers', title: 'Трейлеры', kind: 'episode', items: trailerItems }}
+            onSelect={(x) => trailer(d.trailers.filter((t) => 'trailer:' + t.key === x.id)[0])}
+          />
+        )}
+        {shown >= 3 && d.cast.length > 0 && (
           <ShelfRow
             shelf={{ id: 'cast', title: 'Актёры и съёмочная группа', kind: 'person', items: d.cast }}
             onSelect={() => notify('Страница актёра появится позже')}
           />
         )}
-        {shown >= 3 && d.similar.length > 0 && (
+        {shown >= 4 && d.similar.length > 0 && (
           <ShelfRow shelf={{ id: 'similar', title: 'Похожее', kind: 'poster', items: d.similar }} onSelect={onOpen} />
         )}
         {/* Подробности — на сером фоне, как в Apple TV: кадр фильма за ними не мешает читать */}
-        {shown >= 4 && d.info && <div class="details__fade" />}
-        {shown >= 4 && d.info ? (
+        {shown >= 5 && d.info && <div class="details__fade" />}
+        {shown >= 5 && d.info ? (
           <div class="details__lower">
             <AboutSection d={d} onMore={openMore} />
-            {shown >= 5 && <InfoSection d={d} onMore={openMore} />}
+            {shown >= 6 && <InfoSection d={d} onMore={openMore} />}
             <div class="page__end" />
           </div>
         ) : (
