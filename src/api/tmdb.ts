@@ -15,7 +15,7 @@ const LANG = 'ru-RU';
 export const hasTmdb = KEY.length > 0;
 
 /** Размеры картинок подобраны под экран 1920×1080 и память слабого ТВ. */
-export type ImageSize = 'w185' | 'w300' | 'w342' | 'w500' | 'w780' | 'w1280';
+export type ImageSize = 'w45' | 'w185' | 'w300' | 'w342' | 'w500' | 'w780' | 'w1280'; // w45 — только фото людей
 export function img(path: string | undefined, size: ImageSize): string | undefined {
   return path ? `${IMG}/${size}${path}` : undefined;
 }
@@ -25,7 +25,8 @@ export function img(path: string | undefined, size: ImageSize): string | undefin
 const memory: Record<string, Promise<any>> = {};
 
 function request<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
-  const query: string[] = [`language=${LANG}`];
+  // Язык можно передать свой (биография актёра по-английски, если русской нет)
+  const query: string[] = params.language ? [] : [`language=${LANG}`];
   for (const k in params) query.push(`${k}=${encodeURIComponent(String(params[k]))}`);
   const bearer = KEY.length > 40; // длинный токен — в заголовке, короткий ключ — в адресе
   if (!bearer) query.push(`api_key=${KEY}`);
@@ -83,7 +84,7 @@ export function clearCache() {
 
 const genreNames: Record<number, string> = {};
 
-async function loadGenres() {
+export async function loadGenres() {
   if (genreNames[28]) return;
   const lists = await cached('genres', 24 * 7, async () => {
     const [m, t] = await Promise.all([

@@ -10,6 +10,7 @@ import { LibraryView } from './components/LibraryView';
 import { SearchView } from './components/SearchView';
 import { DetailsScreen } from './components/Details';
 import { GenreScreen } from './components/GenreScreen';
+import { PersonScreen } from './components/PersonScreen';
 import { Sources, type Episode } from './components/Sources';
 import { Player } from './components/Player';
 import type { WatchEntry } from './core/history';
@@ -33,9 +34,9 @@ const WARM_HOLD_MS = 2000;
 
 type Tab = 'search' | 'home' | 'movies' | 'shows' | 'kids' | 'library' | 'settings';
 
-/** Экран поверх главной: фильм/сериал, подборка жанра, выбор раздачи или плеер. */
+/** Экран поверх главной: фильм/сериал, подборка жанра, актёр, выбор раздачи или плеер. */
 interface Entry {
-  type: 'details' | 'genre' | 'sources' | 'player';
+  type: 'details' | 'genre' | 'person' | 'sources' | 'player';
   item: Item;
   episode?: Episode;
   resume?: WatchEntry;
@@ -66,6 +67,8 @@ export function App() {
     let type: Entry['type'] = 'details';
     if (item.id.indexOf('genre:') === 0) {
       type = 'genre';
+    } else if (item.id.indexOf('person:') === 0) {
+      type = 'person';
     } else if (!item.kind && item.meta === '') {
       notify(`Подборка «${item.title}» работает с ключом TMDB`);
       return;
@@ -135,12 +138,12 @@ export function App() {
     const back = takeReturn();
     if (back && !BENCH) openItem(back);
 
-    // Отладка: сразу открыть экран — параметр {"open":"movie:603"} или ?open=movie:603
+    // Отладка: сразу открыть экран — параметр {"open":"movie:603"} или ?open=movie:603 (актёр — person:6384)
     const openId = launchParam('open');
     if (openId) {
       const all = heroItems.concat(...shelves.map((s) => s.items));
       const known = all.filter((x) => x.id === openId)[0];
-      const item: Item | undefined = known || (/^(movie|tv):\d+$/.test(openId) && hasTmdb
+      const item: Item | undefined = known || (/^(movie|tv|person):\d+$/.test(openId) && hasTmdb
         ? { id: openId, title: '', meta: '', kind: openId.indexOf('tv:') === 0 ? 'show' : 'movie', colors: ['#333', '#000'] }
         : undefined);
       if (item) openItem(item);
@@ -210,6 +213,14 @@ export function App() {
             resume={entry.resume}
             active={i === stack.length - 1}
             onPlay={play}
+            onClose={closeTop}
+          />
+        ) : entry.type === 'person' ? (
+          <PersonScreen
+            key={entry.item.id + ':' + i}
+            person={entry.item}
+            active={i === stack.length - 1}
+            onOpen={openItem}
             onClose={closeTop}
           />
         ) : entry.type === 'genre' ? (

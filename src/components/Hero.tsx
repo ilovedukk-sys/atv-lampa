@@ -5,6 +5,7 @@ import { img } from '../api/tmdb';
 import { photoFor } from './Artwork';
 import { imageSizes } from '../core/quality';
 import { isUltra } from '../core/lite';
+import { predecode } from '../core/predecode';
 import { LibraryButton, PlayButton, RoundButton } from './Buttons';
 import { ChevronRightIcon, InfoIcon } from './Icons';
 
@@ -75,6 +76,13 @@ export function HeroBackdrop({ items, index, tint }: { items: Item[]; index: num
     const t = setTimeout(() => setPrev(null), FADE_MS + 100);
     return () => clearTimeout(t);
   }, [index]);
+
+  // Следующий слайд распаковываем заранее (после проявления текущего) — смена не ждёт распаковку
+  useEffect(() => {
+    if (items.length < 2) return;
+    const t = setTimeout(() => predecode(photoFor(items[(index + 1) % items.length], 'hero')), FADE_MS + 300);
+    return () => clearTimeout(t);
+  }, [index, items]);
 
   // Заранее загружаем все фоны, чтобы смена слайда не ждала сеть
   useEffect(() => {

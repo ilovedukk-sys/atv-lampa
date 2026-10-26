@@ -46,5 +46,26 @@ console.log(`Вариант: ${variant || 'текущий'} — слоёв: ${la
 Object.entries(reasonsCount)
   .sort((a, b) => b[1] - a[1])
   .forEach(([k, v]) => console.log(`  ${String(v).padStart(4)}  ${k}`));
+
+// LAYERS_SIZES=1 — каждый слой с отрисовкой: размер и элемент (большие слои = память видеочипа)
+if (process.env.LAYERS_SIZES) {
+  let total = 0;
+  for (const l of layers.filter((x) => x.drawsContent)) {
+    let who = '';
+    if (l.backendNodeId) {
+      const r = await send('DOM.pushNodesByBackendIdsToFrontend', { backendNodeIds: [l.backendNodeId] });
+      const nodeId = r.result && r.result.nodeIds && r.result.nodeIds[0];
+      if (nodeId) {
+        const a = await send('DOM.getAttributes', { nodeId });
+        const attrs = (a.result && a.result.attributes) || [];
+        const cls = attrs[attrs.indexOf('class') + 1];
+        who = attrs.indexOf('class') !== -1 ? '.' + String(cls).split(' ').join('.') : '';
+      }
+    }
+    total += l.width * l.height;
+    console.log(`  ${String(Math.round(l.width)).padStart(5)}×${String(Math.round(l.height)).padEnd(5)} ${who}`);
+  }
+  console.log(`Площадь слоёв: ${(total / (1920 * 1080)).toFixed(1)} экрана`);
+}
 await send('LayerTree.disable');
 ws.close();

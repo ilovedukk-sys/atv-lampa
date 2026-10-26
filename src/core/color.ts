@@ -38,6 +38,8 @@ export function calmHex(hex: string) {
 /**
  * Цвет фона по картинке: маленькая копия кадра (TMDB отдаёт картинки с CORS) сжимается до 16×9 точек
  * и усредняется. Один раз на картинку; если не вышло — fallback.
+ * К адресу добавляем «?tint»: если та же картинка уже стоит на карточке, браузер держит её в кеше
+ * без разрешения CORS (TMDB шлёт его только на запрос с Origin), и холст её не прочитает.
  */
 export function tintOf(url: string | undefined, fallback: string): Promise<string> {
   if (!url) return Promise.resolve(fallback);
@@ -68,7 +70,7 @@ export function tintOf(url: string | undefined, fallback: string): Promise<strin
         }
       };
       pic.onerror = () => resolve(fallback);
-      pic.src = url;
+      pic.src = url + (url.indexOf('?') === -1 ? '?tint' : '&tint');
     });
   }
   return tints[url];

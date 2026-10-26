@@ -3,7 +3,8 @@
  * полноэкранный фон, название (логотип), мета-строка с бейджами, описание (по «ОК» — целиком),
  * кнопки, затем — сезоны и серии (для сериалов), актёры, похожее.
  *
- * Открывается мгновенно с тем, что известно из карточки; остальное подгружается из TMDB.
+ * Открывается мгновенно с тем, что известно из карточки; остальное подгружается из TMDB,
+ * а если в «Настройках» включён Кинопоиск — его оценки, факты и сборы (после анимации открытия).
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Item } from '../data/types';
@@ -15,7 +16,9 @@ import { Badge, LibraryButton, PlayButton, TextButton } from './Buttons';
 import { Card } from './Card';
 import { ShelfRow } from './ShelfRow';
 import { BackdropImage, TitleLogo } from './Hero';
-import { AboutSection, InfoSection, type MoreContent } from './About';
+import { AboutSection, FactsSection, InfoSection, type MoreContent } from './About';
+import { Overlay } from './Overlay';
+import { kpEnabled, kpProblem, kpQuery, loadKp, score, withKp, type Kp } from '../api/kinopoisk';
 import { playTrailer, trailerImage, trailerMeta } from '../core/trailer';
 import type { Trailer } from '../data/details';
 import { finished, lastWatch, remaining, useHistoryVersion } from '../core/history';
@@ -32,12 +35,15 @@ interface Props {
 }
 
 const fromTmdb = (item: Item) => hasTmdb && !!parseId(item.id);
+const NO_DESCRIPTION = 'Описание отсутствует.';
 
 // Сколько длится появление экрана (riseIn в app.css) — до его конца нижние разделы не строим
 const OPEN_ANIMATION_MS = 450;
 
 export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, warm }: Props) {
-  const [d, setD] = useState<Details>(() => (fromTmdb(item) ? quickDetails(item) : getDetails(item)));
+  const [tmdb, setD] = useState<Details>(() => (fromTmdb(item) ? quickDetails(item) : getDetails(item)));
+  const [kp, setKp] = useState<Kp | null>(null);
+  const d = withKp(tmdb, kp); // TMDB главный, Кинопоиск заполняет пробелы
   const root = useRef<HTMLDivElement>(null);
   const desc = useRef<HTMLDivElement>(null);
   // Окно «ЕЩЁ»: полное описание или панель из нижних разделов
@@ -60,7 +66,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
     const step = () => {
       n++;
       setShown(n);
-      if (n < 6) t = window.setTimeout(step, 160);
+      if (n < 7) t = window.setTimeout(step, 160);
     };
     // Первый раздел — после анимации открытия (0,4 с): пока она идёт, процессор ТВ ей не мешаем
     t = window.setTimeout(step, OPEN_ANIMATION_MS);
@@ -78,6 +84,19 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
       alive = false;
     };
   }, []);
+
+  // Кинопоиск (если включён): после анимации открытия, чтобы не дёргать раскладку посреди неё
+  useEffect(() => {
+    if (!d.loaded || warm || !kpEnabled() || !fromTmdb(item)) return;
+    let alive = true;
+    const wait = new Promise((r) => setTimeout(r, OPEN_ANIMATION_MS));
+    Promise.all([loadKp(kpQuery(tmdb)), wait])
+      .then(([x]) => alive && setKp(x))
+      .catch((e: Error) => alive && kpProblem(e) && notify(e.message));
+    return () => {
+      alive = false;
+    };
+  }, [d.loaded]);
 
   // При открытии экрана фокус — на кнопку «Смотреть»
   useEffect(() => {
@@ -137,9 +156,9 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
         <section class="details__top" data-section data-section-top>
           <div class="details__info">
             <TitleLogo item={it} logo={d.logo} cls="details__logo" />
-            <Meta d={d} />
+            <Meta d={d} kp={kp} />
             <div ref={desc} class="details__desc" data-focusable onClick={() => openMore('desc')}>
-              <p>{d.description || (d.loaded ? 'Описание отсутствует.' : '…')}</p>
+              <p>{d.description || (d.loaded ? NO_DESCRIPTION : '…')}</p>
               <div class="details__more">ЕЩЁ</div>
             </div>
             {resumable && (
@@ -174,7 +193,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
         {shown >= 3 && d.cast.length > 0 && (
           <ShelfRow
             shelf={{ id: 'cast', title: 'Актёры и съёмочная группа', kind: 'person', items: d.cast }}
-            onSelect={() => notify('Страница актёра появится позже')}
+            onSelect={(p) => (p.id.indexOf('person:') === 0 ? onOpen(p) : notify('Страница актёра работает с ключом TMDB'))}
           />
         )}
         {shown >= 4 && d.similar.length > 0 && (
@@ -184,8 +203,9 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
         {shown >= 5 && d.info && <div class="details__fade" />}
         {shown >= 5 && d.info ? (
           <div class="details__lower">
-            <AboutSection d={d} onMore={openMore} />
-            {shown >= 6 && <InfoSection d={d} onMore={openMore} />}
+            <AboutSection d={d} kp={kp} onMore={openMore} />
+            {shown >= 6 && kp && kp.facts.length > 0 && <FactsSection facts={kp.facts} onMore={openMore} />}
+            {shown >= 7 && <InfoSection d={d} onMore={openMore} />}
             <div class="page__end" />
           </div>
         ) : (
@@ -194,64 +214,73 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
       </div>
 
       {more && (
-        <div class="overlay" data-screen>
-          <div class="overlay__panel glass" data-focusable onClick={() => setMore(null)}>
-            {more === 'desc' ? (
-              <>
-                <h2>{it.title}</h2>
-                <p>{d.description}</p>
-                <div class="overlay__info">
-                  {d.genres.length > 0 && (
-                    <div>
-                      <b>Жанр</b>
-                      {d.genres.join(', ')}
-                    </div>
-                  )}
-                  {d.year && (
-                    <div>
-                      <b>Год</b>
-                      {d.year}
-                    </div>
-                  )}
-                  {d.director && (
-                    <div>
-                      <b>{d.kind === 'show' ? 'Создатель' : 'Режиссёр'}</b>
-                      {d.director}
-                    </div>
-                  )}
-                  {d.rating && (
-                    <div>
-                      <b>Рейтинг TMDB</b>
-                      {d.rating}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <h2>{more.title}</h2>
-                {more.text && <p>{more.text}</p>}
-                {more.rows.length > 0 && (
-                  <div class="overlay__rows">
-                    {more.rows.map(([k, v]) => (
-                      <div key={k}>
-                        <b>{k}</b>
-                        {v}
-                      </div>
-                    ))}
+        <Overlay onClose={() => setMore(null)}>
+          {more === 'desc' ? (
+            <>
+              <h2>{it.title}</h2>
+              <p class="overlay__long">{d.description || NO_DESCRIPTION}</p>
+              <div class="overlay__info">
+                {d.genres.length > 0 && (
+                  <div>
+                    <b>Жанр</b>
+                    {d.genres.join(', ')}
                   </div>
                 )}
-              </>
-            )}
-            <div class="overlay__hint">«ОК» или «Назад» — закрыть</div>
-          </div>
-        </div>
+                {d.year && (
+                  <div>
+                    <b>Год</b>
+                    {d.year}
+                  </div>
+                )}
+                {d.director && (
+                  <div>
+                    <b>{d.kind === 'show' ? 'Создатель' : 'Режиссёр'}</b>
+                    {d.director}
+                  </div>
+                )}
+                {d.rating && (
+                  <div>
+                    <b>TMDB</b>
+                    {d.rating}
+                  </div>
+                )}
+                {kp && kp.kp && (
+                  <div>
+                    <b>Кинопоиск</b>
+                    {score(kp.kp.value)}
+                  </div>
+                )}
+                {kp && kp.imdb && (
+                  <div>
+                    <b>IMDb</b>
+                    {score(kp.imdb.value)}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>{more.title}</h2>
+              {more.text && <p class="overlay__long">{more.text}</p>}
+              {more.rows.length > 0 && (
+                <div class="overlay__rows">
+                  {more.rows.map(([k, v]) => (
+                    <div key={k}>
+                      <b>{k}</b>
+                      {v}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Overlay>
       )}
     </div>
   );
 }
 
-function Meta({ d }: { d: Details }) {
+function Meta({ d, kp }: { d: Details; kp: Kp | null }) {
   const parts = [d.genres.join(', '), d.year, d.runtime].filter(Boolean);
   return (
     <div class="details__meta">
@@ -260,8 +289,21 @@ function Meta({ d }: { d: Details }) {
       {d.badges.map((b) => (
         <Badge key={b}>{b}</Badge>
       ))}
-      {d.rating && <span class="details__rating">★ {d.rating}</span>}
+      {/* С Кинопоиском — три оценки с подписями, без него — звёздочка TMDB, как раньше */}
+      {d.rating && !kp && <span class="details__rating">★ {d.rating}</span>}
+      {d.rating && kp && <Rating src="TMDB" cls="tmdb" value={d.rating} />}
+      {kp && kp.kp && <Rating src="КП" cls="kp" value={score(kp.kp.value)} />}
+      {kp && kp.imdb && <Rating src="IMDb" cls="imdb" value={score(kp.imdb.value)} />}
     </div>
+  );
+}
+
+function Rating({ src, cls, value }: { src: string; cls: string; value: string }) {
+  return (
+    <span class="details__rating">
+      <b class={`rating__src rating__src--${cls}`}>{src}</b>
+      {value}
+    </span>
   );
 }
 

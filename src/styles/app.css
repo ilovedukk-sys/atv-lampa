@@ -793,8 +793,8 @@ html.flat .card--poster .card__caption { will-change: auto; }
 }
 .overlay__panel h2 { margin: 0 0 20px; font-size: 44px; font-weight: 700; }
 .overlay__panel p { margin: 0; font-size: 28px; line-height: 1.45; color: rgba(255, 255, 255, 0.9); }
-.overlay__info { display: flex; margin-top: 34px; font-size: 21px; }
-.overlay__info div { margin-right: 56px; }
+.overlay__info { display: flex; flex-wrap: wrap; margin-top: 34px; font-size: 21px; }
+.overlay__info div { margin: 0 56px 12px 0; }
 .overlay__info b {
   display: block;
   margin-bottom: 4px;
@@ -1170,7 +1170,8 @@ html.flat .card--poster .card__caption { will-change: auto; }
 
 /* Карточки и панели простые (без слоёв и теней), как и карточки полок — дёшево для слабого ТВ */
 .about { margin-top: 30px; padding-bottom: 10px; }
-.about__row { display: flex; padding: 0 var(--safe-x); }
+.about__row { padding-top: 10px; padding-bottom: 10px; } /* место под увеличение карточки в фокусе */
+.about__card { flex-shrink: 0; }
 .about__card {
   position: relative;
   height: 290px;
@@ -1185,7 +1186,7 @@ html.flat .card--poster .card__caption { will-change: auto; }
 .about__card--main { width: 620px; }
 .about__card--quote { width: 440px; }
 .about__card--score { width: 280px; }
-.about__card--money { width: 340px; }
+.about__card--money { width: 400px; }
 
 .about__title { font-size: 30px; font-weight: 700; }
 .about__sub,
@@ -1277,3 +1278,79 @@ html.flat .card--poster .card__caption { will-change: auto; }
 .details__fade { height: 140px; margin-top: -100px; background: linear-gradient(180deg, rgba(31, 31, 34, 0), #1f1f22); }
 .details__lower .about { margin-top: 0; padding-top: 20px; }
 .details__lower .page__end { height: 80px; }
+
+/* ---------- страница актёра ---------- */
+
+/* Фон — сплошной спокойный цвет из фото (сплошная заливка ничего не стоит при прокрутке) */
+.person__head {
+  display: flex;
+  align-items: center;
+  height: 520px;
+  padding: 40px var(--safe-x) 0;
+  box-sizing: border-box;
+}
+.person__photo {
+  flex: none;
+  width: 300px;
+  height: 300px;
+  margin-right: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12) center 20% / cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 84px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+.person__text { width: 1150px; }
+.person__name { margin: 0; font-size: 68px; font-weight: 700; line-height: 1.05; letter-spacing: -1px; }
+.person__sub { margin-top: 10px; font-size: 26px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+.person__facts { margin-top: 6px; font-size: 22px; color: var(--text-secondary); }
+.person__bio { margin-top: 18px; max-width: 1150px; min-height: 40px; }
+.person__bio.is-empty p { color: var(--text-tertiary); }
+.person__loading { position: absolute; top: 520px; left: 0; right: 0; height: 460px; }
+html.ultra .person__photo { box-shadow: none; }
+
+/* Окно «ЕЩЁ»: длинный текст листается стрелками */
+.overlay__body { max-height: 820px; overflow: hidden; }
+.overlay__panel p.overlay__long { font-size: 26px; white-space: pre-line; }
+
+/* ---------- Кинопоиск ---------- */
+
+/* Оценки в строке под названием: подпись источника цветом его логотипа */
+.rating__src { margin-right: 7px; font-size: 18px; font-weight: 800; letter-spacing: 0.3px; }
+.rating__src--tmdb { color: #01b4e4; }
+.rating__src--kp { color: #ff6a00; }
+.rating__src--imdb { color: #f5c518; }
+.about__source--kp { color: #ff6a00; }
+.about__card.is-focused .about__source--kp { color: #e05a00; }
+
+/* «Знаете ли вы, что…» — ряд карточек с фактами, листается как полка */
+.details__lower .about--facts { margin-top: 0; padding-top: 34px; }
+.about--facts .shelf__track { padding-top: 10px; padding-bottom: 10px; }
+.about__card--fact { width: 520px; }
+.about__fact {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.42;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* core/predecode.ts: крошечный почти прозрачный слой поверх всего — в нём заранее распаковываются большие кадры */
+.predecode {
+  position: absolute;
+  left: 1919px;
+  top: 1079px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0.01;
+  z-index: 9999;
+  will-change: transform;
+  pointer-events: none;
+}
+.predecode img { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; }

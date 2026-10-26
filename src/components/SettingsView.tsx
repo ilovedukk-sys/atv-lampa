@@ -10,10 +10,11 @@ import { clearCache, hasTmdb } from '../api/tmdb';
 import { cycleQuality, getQuality, QUALITY_LABELS } from '../core/quality';
 import { echo, setTsUrl, tsUrl } from '../api/torrserver';
 import { getParser, setParser } from '../api/releases';
+import { checkKpKey, kpKey, kpProblem, setKpKey } from '../api/kinopoisk';
 import { focus, getFocused } from '../core/focus';
 import { TextInput } from './TextInput';
 
-const VERSION = '0.5.0';
+const VERSION = '0.6.0';
 
 interface Row {
   label: string;
@@ -22,12 +23,14 @@ interface Row {
   action: () => void;
 }
 
-type Editing = null | { field: 'ts' | 'parser' | 'parserKey'; back: HTMLElement | null };
+type Field = 'ts' | 'parser' | 'parserKey' | 'kp';
+type Editing = null | { field: Field; back: HTMLElement | null };
 
 export function SettingsView({ notify }: { notify: (text: string) => void }) {
   const [, redraw] = useState(0);
   const [editing, setEditing] = useState<Editing>(null);
   const [tsVersion, setTsVersion] = useState<string | null>(null); // null — проверяем, '' — не отвечает
+  const [kpState, setKpState] = useState<string | null>(null); // null — проверяем, иначе готовая надпись
   const onOff = (v: boolean) => (v ? 'Вкл.' : 'Выкл.');
   const short = (url: string) => url.replace(/^https?:\/\//, '');
 
@@ -46,7 +49,23 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
   };
   useEffect(() => checkTs(false), []);
 
-  const edit = (field: 'ts' | 'parser' | 'parserKey') => setEditing({ field, back: getFocused() });
+  const checkKp = (announce: boolean) => {
+    if (!kpKey()) return setKpState('Выкл.');
+    setKpState(null);
+    checkKpKey()
+      .then((q) => {
+        setKpState(`✓ Вкл. · ещё ${Math.max(0, q.limit - q.used)} запросов`);
+        if (announce) notify('Кинопоиск подключён');
+      })
+      .catch((e: Error) => {
+        const problem = kpProblem(e);
+        setKpState(problem === 'limit' ? '✕ Лимит на сегодня' : problem ? '✕ Ключ не подходит' : '✕ Нет связи');
+        if (announce) notify(problem ? e.message : 'Кинопоиск не отвечает');
+      });
+  };
+  useEffect(() => checkKp(false), []);
+
+  const edit = (field: Field) => setEditing({ field, back: getFocused() });
   const finishEdit = () => {
     const back = editing && editing.back;
     setEditing(null);
@@ -76,6 +95,15 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
       action: () => edit('parserKey'),
     });
   }
+
+  const data: Row[] = [
+    {
+      label: 'Кинопоиск',
+      hint: 'Оценки КП и IMDb, факты, сборы в России. Бесплатный ключ: kinopoiskapiunofficial.tech',
+      value: () => (kpState === null ? 'Проверяем…' : kpState),
+      action: () => edit('kp'),
+    },
+  ];
 
   const view: Row[] = [
     {
@@ -145,12 +173,14 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
           <h1>Настройки</h1>
         </div>
         {group('Источники видео', sources, true)}
+        {group('Данные о фильмах', data)}
         {group('Приложение', view)}
         <div class="settings__about">
           <b>ATV Lampa {VERSION}</b>
           <div>
             {hasTmdb
-              ? 'Данные о фильмах и сериалах, постеры и кадры — The Movie Database (TMDB).'
+              ? 'Данные о фильмах и сериалах, постеры и кадры — The Movie Database (TMDB).' +
+                (kpKey() ? ' Оценки и факты — Кинопоиск.' : '')
               : 'Ключ TMDB не задан — показываются временные данные.'}
           </div>
           <div class="settings__tmdb">This product uses the TMDB API but is not endorsed or certified by TMDB.</div>
@@ -183,6 +213,24 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
             setParser({ url: v });
             finishEdit();
             notify(v ? 'Парсер сохранён' : 'Парсер выключен');
+          }}
+        />
+      )}
+      {editing && editing.field === 'kp' && (
+        <TextInput
+          title="Ключ Кинопоиска"
+          hint="Зарегистрируйтесь на kinopoiskapiunofficial.tech и скопируйте ключ из профиля (вида 1a2b3c4d-…). Пусто — выключить."
+          value={kpKey()}
+          placeholder="00000000-0000-0000-0000-000000000000"
+          onCancel={finishEdit}
+          onDone={(v) => {
+            setKpKey(v);
+            finishEdit();
+            if (v) checkKp(true);
+            else {
+              setKpState('Выкл.');
+              notify('Кинопоиск выключен');
+            }
           }}
         />
       )}

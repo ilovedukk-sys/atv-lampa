@@ -51,6 +51,7 @@ export interface Details {
   rating?: string; // «8,4»
   badges: string[]; // «4K», «HDR», «5.1»
   description: string;
+  imdbId?: string; // чтобы точно найти фильм на Кинопоиске
   director?: string;
   cast: Item[];
   seasons: Season[];

@@ -11,9 +11,12 @@ export async function loadDetails(item: Item): Promise<Details | null> {
   if (!parsed) return null;
   const [type, id] = parsed;
 
-  return cached(`details4:${item.id}`, 24, async () => {
+  // details5 — добавились IMDb id (для Кинопоиска), режиссёры в «Актёрах», страны по-русски
+  return cached(`details5:${item.id}`, 24, async () => {
     const append =
-      type === 'movie' ? 'credits,similar,release_dates,images,videos' : 'credits,similar,content_ratings,images,videos';
+      type === 'movie'
+        ? 'credits,similar,release_dates,images,videos'
+        : 'credits,similar,content_ratings,images,videos,external_ids';
     const r = await request<any>(`/${type}/${id}`, {
       append_to_response: append,
       include_image_language: 'ru,en,null',
@@ -23,13 +26,22 @@ export async function loadDetails(item: Item): Promise<Details | null> {
     const full = toItem(r, type) as Item;
     const genres: string[] = (r.genres || []).map((g: any) => cap(g.name)).slice(0, 2);
 
-    const cast: Item[] = ((r.credits && r.credits.cast) || []).slice(0, 15).map((p: any) => ({
+    // Актёры, а в конце — режиссёры (у сериала — создатели), как в «Актёры и съёмочная группа» Apple TV
+    const person = (p: any, role: string): Item => ({
       id: `person:${p.id}`,
       title: p.name,
-      meta: p.character || '',
+      meta: role,
       colors: colorsFor('p' + p.id),
       poster: p.profile_path || undefined,
-    }));
+    });
+    const makers: any[] =
+      type === 'movie'
+        ? ((r.credits && r.credits.crew) || []).filter((c: any) => c.job === 'Director').slice(0, 2)
+        : (r.created_by || []).slice(0, 2);
+    const cast: Item[] = ((r.credits && r.credits.cast) || [])
+      .slice(0, 14)
+      .map((p: any) => person(p, p.character || ''))
+      .concat(makers.map((p) => person(p, type === 'movie' ? 'Режиссёр' : 'Создатель')));
 
     const similar: Item[] = [];
     ((r.similar && r.similar.results) || []).forEach((x: any) => {
@@ -59,7 +71,8 @@ export async function loadDetails(item: Item): Promise<Details | null> {
       age: type === 'movie' ? movieAge(r.release_dates) : tvAge(r.content_ratings),
       rating: r.vote_average ? r.vote_average.toFixed(1).replace('.', ',') : undefined,
       badges: [],
-      description: r.overview || 'Описание на русском пока отсутствует.',
+      description: r.overview || '', // нет русского — экран напишет «Описание отсутствует» (или возьмёт с Кинопоиска)
+      imdbId: r.imdb_id || (r.external_ids && r.external_ids.imdb_id) || undefined,
       director,
       cast,
       seasons,
@@ -169,8 +182,8 @@ function crew(r: any, jobs: string[], limit = 4) {
   return names(((r.credits && r.credits.crew) || []).filter((c: any) => jobs.indexOf(c.job) !== -1), limit);
 }
 
-const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-function longDate(d?: string) {
+export const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+export function longDate(d?: string) {
   if (!d) return undefined;
   const [y, m, day] = d.split('-').map(Number);
   return m && day ? `${day} ${MONTHS[m - 1]} ${y}` : String(y);
@@ -200,6 +213,18 @@ const LANGS: Record<string, string> = {
   ta: 'Тамильский', te: 'Телугу', is: 'Исландский', ga: 'Ирландский', xx: 'Без слов',
 };
 
+// TMDB отдаёт страны только по-английски
+const COUNTRIES: Record<string, string> = {
+  US: 'США', GB: 'Великобритания', RU: 'Россия', SU: 'СССР', UA: 'Украина', BY: 'Беларусь', KZ: 'Казахстан',
+  FR: 'Франция', DE: 'Германия', IT: 'Италия', ES: 'Испания', PT: 'Португалия', CA: 'Канада', AU: 'Австралия',
+  NZ: 'Новая Зеландия', IE: 'Ирландия', JP: 'Япония', KR: 'Южная Корея', CN: 'Китай', HK: 'Гонконг', TW: 'Тайвань',
+  IN: 'Индия', MX: 'Мексика', BR: 'Бразилия', AR: 'Аргентина', BE: 'Бельгия', NL: 'Нидерланды', LU: 'Люксембург',
+  CH: 'Швейцария', AT: 'Австрия', SE: 'Швеция', NO: 'Норвегия', DK: 'Дания', FI: 'Финляндия', IS: 'Исландия',
+  PL: 'Польша', CZ: 'Чехия', HU: 'Венгрия', RO: 'Румыния', BG: 'Болгария', RS: 'Сербия', HR: 'Хорватия',
+  GR: 'Греция', TR: 'Турция', IL: 'Израиль', AE: 'ОАЭ', ZA: 'ЮАР', TH: 'Таиланд', ID: 'Индонезия',
+  MT: 'Мальта', CY: 'Кипр', GE: 'Грузия', AM: 'Армения', LT: 'Литва', LV: 'Латвия', EE: 'Эстония',
+};
+
 function language(code: string, fallback?: string) {
   return LANGS[code] || fallback || code;
 }
@@ -223,7 +248,7 @@ function infoOf(r: any, type: 'movie' | 'tv'): DetailsInfo {
           : undefined,
     status: type === 'tv' ? TV_STATUS[r.status] : undefined,
     studios: type === 'tv' && r.networks && r.networks.length ? names(r.networks, 3) : names(r.production_companies, 3),
-    countries: names(r.production_countries, 3),
+    countries: ((r.production_countries as any[]) || []).slice(0, 3).map((c) => COUNTRIES[c.iso_3166_1] || c.name),
     originalTitle: original && original !== title ? original : undefined,
     originalLanguage: r.original_language ? language(r.original_language) : undefined,
     languages: ((r.spoken_languages as any[]) || []).map((l) => language(l.iso_639_1, l.english_name)).slice(0, 8),

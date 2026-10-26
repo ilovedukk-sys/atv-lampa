@@ -12,21 +12,44 @@ const DEVICE = process.env.TV_DEVICE || 'tv';
 const info = JSON.parse(readFileSync('public/appinfo.json', 'utf8'));
 const ipk = `build/${info.id}_${info.version}_all.ipk`;
 
+const ares = (tool, args, quiet) =>
+  spawnSync(process.execPath, [`node_modules/@webos-tools/cli/bin/${tool}.js`, ...args], {
+    stdio: quiet ? 'pipe' : 'inherit',
+    encoding: 'utf8',
+  });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const running = () => (ares('ares-launch', ['--device', DEVICE, '--running'], true).stdout || '').indexOf(info.id) !== -1;
+
+/*
+ * Запуск с проверкой. Закрытие (и переустановка) на ТВ заканчивается не сразу, и запуск, пришедший
+ * в это время, однажды потерялся: приложение не открылось, а на экран вернулось предыдущее
+ * (IPTV пользователя). Поэтому ждём настоящего закрытия, а запуск проверяем и при неудаче повторяем.
+ */
+async function launchChecked(params, afterClose) {
+  if (afterClose) for (let i = 0; i < 10 && running(); i++) await sleep(1000);
+  for (let i = 0; i < 3; i++) {
+    if (i) await sleep(3000);
+    const args = ['--device', DEVICE, info.id].concat(params ? ['-p', JSON.stringify(params)] : []);
+    if (ares('ares-launch', args).status === 0 && running()) return true;
+  }
+  console.error('Приложение не запустилось. Проверьте, что сейчас на экране ТВ.');
+  return false;
+}
+
 const commands = {
   install: ['ares-install', '--device', DEVICE, ipk],
-  launch: ['ares-launch', '--device', DEVICE, info.id],
   inspect: ['ares-inspect', '--device', DEVICE, '--app', info.id, '--open'],
 };
 
-// Замер плавности: перезапуск приложения с параметром {"bench":1}, через ~25 с — снимок экрана
+if (process.argv[2] === 'launch') process.exit((await launchChecked()) ? 0 : 1);
+
+// Замер плавности: перезапуск приложения с параметром {"bench":1}, через ~170 с — снимок экрана
 if (process.argv[2] === 'bench') {
-  const ares = (tool, args) =>
-    spawnSync(process.execPath, [`node_modules/@webos-tools/cli/bin/${tool}.js`, ...args], { stdio: 'inherit' });
   ares('ares-launch', ['--device', DEVICE, '--close', info.id]);
   // BENCH_PARAMS='{"exp":1}' — опыт с вариантами CSS (см. src/core/bench.ts), BENCH_WAIT — секунд ждать
   const params = { bench: 1, ...JSON.parse(process.env.BENCH_PARAMS || '{}') };
   const seconds = Number(process.env.BENCH_WAIT || 170); // три режима ≈ 2,5 минуты
-  ares('ares-launch', ['--device', DEVICE, info.id, '-p', JSON.stringify(params)]);
+  if (!(await launchChecked(params, true))) process.exit(1);
   console.log(`Идёт замер, ~${seconds} секунд…`);
   await new Promise((r) => setTimeout(r, seconds * 1000));
   process.argv[2] = 'screenshot';

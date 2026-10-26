@@ -49,6 +49,12 @@ await send('Tracing.end');
 await complete;
 ws.close();
 
+// Сырые события — для подробного разбора по времени (TRACE_OUT=файл.json)
+if (process.env.TRACE_OUT) {
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(process.env.TRACE_OUT, JSON.stringify(events));
+}
+
 // ---------- разбор ----------
 const threadNames = {};
 events.filter((e) => e.ph === 'M' && e.name === 'thread_name').forEach((e) => (threadNames[e.pid + ':' + e.tid] = e.args.name));
