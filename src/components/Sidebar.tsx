@@ -6,13 +6,14 @@
 import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { focusedClass, getFocused, onFocusChange, screenOf } from '../core/focus';
-import { FilmIcon, GearIcon, HomeIcon, LibraryIcon, ProfileIcon, SearchIcon, TvIcon } from './Icons';
+import { FilmIcon, GearIcon, HomeIcon, KidsIcon, LibraryIcon, ProfileIcon, SearchIcon, TvIcon } from './Icons';
 
 export const TABS: { id: string; label: string; Icon: () => JSX.Element }[] = [
   { id: 'search', label: 'Поиск', Icon: SearchIcon },
   { id: 'home', label: 'Главная', Icon: HomeIcon },
   { id: 'movies', label: 'Фильмы', Icon: FilmIcon },
   { id: 'shows', label: 'Сериалы', Icon: TvIcon },
+  { id: 'kids', label: 'Детям', Icon: KidsIcon },
   { id: 'library', label: 'Медиатека', Icon: LibraryIcon },
   { id: 'settings', label: 'Настройки', Icon: GearIcon },
 ];

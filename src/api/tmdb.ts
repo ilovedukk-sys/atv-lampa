@@ -115,6 +115,16 @@ export function colorsFor(id: string): [string, string] {
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
+/** Жанры TMDB, по которым разводим вкладки: мультфильм, семейный, детский (сериалы). */
+export const ANIMATION = 16;
+export const FAMILY = 10751;
+export const KIDS_TV = 10762;
+
+/** Мультфильм, семейное или детское — для вкладки «Детям», а не «Фильмы»/«Сериалы». */
+export function isForKids(item: Item) {
+  return (item.genreIds || []).some((g) => g === ANIMATION || g === FAMILY || g === KIDS_TV);
+}
+
 export function yearOf(date?: string) {
   return date ? Number(date.slice(0, 4)) || undefined : undefined;
 }
@@ -125,7 +135,9 @@ export function toItem(r: any, type?: 'movie' | 'tv'): Item | null {
   if (media !== 'movie' && media !== 'tv') return null;
   const id = `${media}:${r.id}`;
   const year = yearOf(r.release_date || r.first_air_date);
-  const genre = r.genre_ids && r.genre_ids.length ? genreNames[r.genre_ids[0]] : '';
+  const ids: number[] = r.genre_ids || (r.genres || []).map((g: any) => g.id);
+  // Аниме и мультсериалы TMDB помечает жанром «Мультфильм» — у сериалов пишем «Мультсериал»
+  const genre = ids.length ? (media === 'tv' && ids[0] === ANIMATION ? 'Мультсериал' : genreNames[ids[0]]) : '';
   return {
     id,
     tmdbId: r.id,
@@ -139,6 +151,7 @@ export function toItem(r: any, type?: 'movie' | 'tv'): Item | null {
     backdrop: r.backdrop_path || undefined,
     year,
     rating: r.vote_average || undefined,
+    genreIds: ids.length ? ids.slice(0, 4) : undefined,
   };
 }
 
@@ -181,7 +194,8 @@ export function readable(item: Item) {
 /** Любой список TMDB (популярное, тренды, жанр…) → Item[]. */
 export async function list(path: string, params: Record<string, string | number> = {}, type?: 'movie' | 'tv') {
   await loadGenres();
-  const key = path + JSON.stringify(params);
+  // v2 — в карточках появились жанры (genreIds); старый кеш без них не берём
+  const key = 'v2' + path + JSON.stringify(params);
   return cached(key, 6, async () => {
     const data = await request<any>(path, params);
     return toItems(data.results || [], type).filter(readable);

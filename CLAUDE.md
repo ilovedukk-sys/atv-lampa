@@ -46,7 +46,9 @@ npm run tv:bench       # автозамер FPS на ТВ по сценария�
 - `core/` — `parallax` (наклон за Magic Remote, отблеск), `lazy` (ленивая загрузка + подгрузка заранее по ходу),
   `quality` (качество обложек), `lite` (облегчённый режим), `sound`, `fps`, `library` (медиатека в localStorage), `bench`.
 - `api/tmdb.ts` — запросы, кеш в localStorage, перевод в `Item`; `api/details.ts` — экран фильма и сезоны.
-- `data/catalog.ts` — полки вкладок Главная/Фильмы/Сериалы; `data/mock.ts` — данные без ключа TMDB.
+- `data/catalog.ts` — полки вкладок Главная/Фильмы/Сериалы/Детям; `data/mock.ts` — данные без ключа TMDB.
+  Top Shelf «Фильмов» — только фильмы, «Сериалов» — только сериалы, оба без мультфильмов/детского (`isForKids` по `genreIds`);
+  «Детям» — TMDB discover с `certification.lte=PG` (US), мультсериалы — жанр 10762. Кеш списков — ключ с префиксом `v2`.
 - `components/` — `Sidebar`, `Browse` (вкладка с Top Shelf), `Hero`, `ShelfRow`, `Card`, `Artwork`, `Details`,
   `GenreScreen`, `LibraryView`, `SearchView` (экранная клавиатура), `SettingsView`, `TextInput` (ввод адресов),
   `About` (внизу экрана фильма, как в Apple TV: «Описание» — карточки, «Информация / Языки / Создатели» — панели),

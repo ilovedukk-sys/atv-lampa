@@ -116,7 +116,7 @@ export function Hero({ items, index, onPlay, onInfo, onNext, notify }: HeroProps
         {/* key заставляет текст перерисоваться с анимацией; кнопки не трогаем, чтобы не терять фокус */}
         <div class="hero__text" key={item.id}>
           <TitleLogo item={item} logo={item.logo} cls="hero__logo" />
-          <div class="hero__meta">{item.meta}</div>
+          <div class="hero__meta">{kindLabel(item)}</div>
           <p class="hero__desc">{item.description}</p>
         </div>
         <div class="hero__buttons">
@@ -144,4 +144,10 @@ export function Hero({ items, index, onPlay, onInfo, onNext, notify }: HeroProps
       </div>
     </section>
   );
+}
+
+/** «Сериал · Криминал · 2021», «Фильм · Ужасы · 2026», «Мультсериал · 2023» — сразу видно, что это. */
+function kindLabel(item: Item) {
+  if (!item.kind || /^Мульт/.test(item.meta)) return item.meta; // «Мультфильм», «Мультсериал» — и так понятно
+  return [item.kind === 'show' ? 'Сериал' : 'Фильм', item.meta].filter(Boolean).join(' · ');
 }

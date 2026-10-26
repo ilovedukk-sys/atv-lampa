@@ -24,7 +24,7 @@ const BENCH = benchRequested();
 const WARM_DELAY_MS = 2000;
 const WARM_HOLD_MS = 2000;
 
-type Tab = 'search' | 'home' | 'movies' | 'shows' | 'library' | 'settings';
+type Tab = 'search' | 'home' | 'movies' | 'shows' | 'kids' | 'library' | 'settings';
 
 /** Экран поверх главной: фильм/сериал, подборка жанра, выбор раздачи или плеер. */
 interface Entry {
@@ -165,7 +165,7 @@ export function App() {
   return (
     <div class={`app${playing ? ' is-playing' : ''}`}>
       <div class={`screen home${homeVisible ? '' : ' is-hidden'}`} data-screen>
-        {tab === 'home' || tab === 'movies' || tab === 'shows' ? (
+        {tab === 'home' || tab === 'movies' || tab === 'shows' || tab === 'kids' ? (
           <BrowseView
             key={tab}
             tab={tab}

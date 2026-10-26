@@ -59,6 +59,14 @@ export const LibraryIcon = () => (
   </svg>
 );
 
+/** «Детям» — воздушный шарик. */
+export const KidsIcon = () => (
+  <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+    <path d="M12 3.2c-3.3 0-5.8 2.6-5.8 5.9 0 3.6 3 6.9 5.8 6.9s5.8-3.3 5.8-6.9c0-3.3-2.5-5.9-5.8-5.9z" {...stroke} />
+    <path d="M12 16v1.6M12 17.6c-1.2 1-1.6 2-.6 3.2" {...stroke} />
+  </svg>
+);
+
 export const GearIcon = () => (
   <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
     <circle cx="12" cy="12" r="3.2" {...stroke} />
