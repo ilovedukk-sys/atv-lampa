@@ -308,9 +308,6 @@ button {
 
 .shelf__viewport { width: 1920px; }
 
-/* Горизонтальная прокрутка: --sx ставит движок фокуса (core/focus.ts, setScroll) */
-[data-scroll-x] { transform: translate3d(var(--sx, 0px), 0, 0); }
-
 .shelf__track {
   position: relative;
   display: flex;
@@ -329,7 +326,10 @@ button {
  * переносит в слои и перерисовывает: хвост полки (5680×302) и соседние полки (1920×517) на каждое
  * нажатие. z-index поднимает анимируемый элемент над соседями, и рисовать после него нечего.
  * was-focused — элемент, который ещё уменьшается после ухода фокуса (ставит core/focus.ts).
- * Полки (.shelf, .shelf__viewport) поэтому и не позиционированы. На главной слоёв 35 → 25.
+ * Полки (.shelf, .shelf__viewport) поэтому и не позиционированы: полка со сдвигом в style
+ * браузер считает «движущейся», и позиционированные блоки после неё тоже ушли бы в слои.
+ * На главной слоёв 35 → 25. (Сдвиг через CSS-переменную пробовали — лишний пересчёт стилей
+ * всех карточек полки на каждое нажатие, серии −4 fps.)
  */
 .card.is-focused, .card.was-focused,
 .btn.is-focused, .btn.was-focused,
@@ -432,13 +432,18 @@ html.noshadow .card.is-focused .card__frame { box-shadow: none; }
 .card__caption {
   margin-top: 24px; /* место под увеличенную карточку — подпись не двигаем, чтобы не перерисовывать */
 }
+/*
+ * Подпись постера и широкой карточки — только у выбранной (как в Apple TV). Прячем через visibility,
+ * а не opacity: 0 — прозрачность делает каждую подпись отдельным «слоем» в расчётах браузера
+ * (~90 штук на главной), и их пересчёт шёл на каждом кадре анимации.
+ */
 .card--poster .card__caption {
-  opacity: 0;
+  visibility: hidden;
   text-align: center;
 }
-/* Широкие карточки: название на кадре, подпись снизу — только у выбранной (как в Apple TV) */
-.card--landscape .card__caption { opacity: 0; }
-.card--landscape.is-focused .card__caption { opacity: 1; }
+.card--landscape .card__caption { visibility: hidden; }
+.card--landscape.is-focused .card__caption,
+.card--poster.is-focused .card__caption { visibility: visible; }
 .art--photo.art--landscape .art__bg { display: flex; align-items: flex-end; }
 .art__title {
   max-height: 2.2em;
@@ -451,7 +456,6 @@ html.noshadow .card.is-focused .card__frame { box-shadow: none; }
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
 }
 
-.card--poster.is-focused .card__caption { opacity: 1; }
 
 .card__title {
   font-size: 22px;

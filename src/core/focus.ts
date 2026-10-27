@@ -378,13 +378,7 @@ function offsetWithin(el: HTMLElement, ancestor: HTMLElement, axis: 'x' | 'y' = 
 function setScroll(el: HTMLElement, value: number, axis: 'x' | 'y') {
   if (scrollTargets.get(el) === value) return;
   scrollTargets.set(el, value);
-  /*
-   * Полку сдвигаем через CSS-переменную (transform задан в app.css), а не transform в style:
-   * слой с transform прямо в style браузер ТВ считает «движущимся» и всё, что рисуется после него,
-   * тоже выносит в отдельные слои. Страницу и фон — по-старому: после них других слоёв нет.
-   */
-  if (axis === 'x') el.style.setProperty('--sx', `${-value}px`);
-  else el.style.transform = `translate3d(0,${-value}px,0)`;
+  el.style.transform = axis === 'x' ? `translate3d(${-value}px,0,0)` : `translate3d(0,${-value}px,0)`;
 }
 
 /** «Упор» — карточка чуть дёргается, когда дальше идти некуда (как в tvOS). */

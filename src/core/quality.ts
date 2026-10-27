@@ -40,9 +40,20 @@ export function getQuality() {
   return quality;
 }
 
+/*
+ * Интерфейс в 720p (appinfo.json, resolution 1280x720): точек на экране в 1,5 раза меньше по стороне,
+ * и постер 232×348 занимает 155×232 настоящих точки — большие картинки только зря распаковываются
+ * и занимают видеопамять. Тогда постеры и кадры на ступень меньше; фон и логотип — как есть.
+ */
+const SMALL: Partial<Record<ImageSize, ImageSize>> = { w500: 'w342', w342: 'w185', w780: 'w300' };
+const smallScreen = window.innerWidth <= 1280;
+
 export function imageSizes(): Sizes {
   // Минимальный режим — всегда самые лёгкие картинки (настройка пользователя при этом не меняется)
-  return SIZES[isUltra() ? 'low' : quality];
+  const s = SIZES[isUltra() ? 'low' : quality];
+  if (!smallScreen) return s;
+  const down = (v: ImageSize) => SMALL[v] || v;
+  return { ...s, poster: down(s.poster), landscape: down(s.landscape) };
 }
 
 /** Следующий уровень по кругу: низкое → среднее → высокое → низкое. */
