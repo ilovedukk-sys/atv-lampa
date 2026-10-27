@@ -30,8 +30,20 @@ const EXPERIMENTS: Config[] = [
   { name: 'Облегч.', cls: 'lite' },
 ];
 const EXP_SCENARIOS = ['Открыть фильм', 'Вниз к сериям', 'Назад на главную'];
-const experiment = !!launchParam('exp');
-const configs = experiment ? EXPERIMENTS : CONFIGS;
+/*
+ * Опыт «A/B»: {"exp":"ab"} — все сценарии, текущий вид против класса exp на <html>
+ * (CSS опыта пишем под html.exp), по два прохода вперемешку — видно и разницу, и разброс.
+ * Запуск: BENCH_PARAMS='{"exp":"ab"}' BENCH_WAIT=200 npm run tv:bench
+ */
+const AB: Config[] = [
+  { name: 'Сейчас', cls: '' },
+  { name: 'Опыт', cls: 'exp' },
+  { name: 'Сейчас', cls: '' },
+  { name: 'Опыт', cls: 'exp' },
+];
+const ab = launchParam('exp') === 'ab';
+const experiment = !!launchParam('exp') && !ab;
+const configs = ab ? AB : experiment ? EXPERIMENTS : CONFIGS;
 
 interface Scenario {
   name: string;

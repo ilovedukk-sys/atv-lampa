@@ -2,7 +2,7 @@
  * Вкладки «Главная», «Фильмы», «Сериалы»: фон Top Shelf + страница с полками.
  * Данные — из TMDB (src/data/catalog.ts), пока грузятся — индикатор.
  */
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Item, Page } from '../data/types';
 import { loadPage, withLogos, type BrowseTab } from '../data/catalog';
 import { focusFirstIn } from '../core/focus';
@@ -97,6 +97,22 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
     };
   }, [heroItem && heroItem.id]);
 
+  /*
+   * Полки — один раз на загруженную страницу. Без этого каждое открытие фильма (и возврат) заново
+   * сравнивает всю главную — ~90 карточек, десятки миллисекунд на ТВ в самый неподходящий момент.
+   * Те же объекты разметки Preact пропускает, не заходя внутрь. onOpen при этом остаётся первым —
+   * это нормально: он работает через setState и ссылки (App.tsx) и от перерисовки не зависит.
+   */
+  const shelves = useMemo(
+    () =>
+      page &&
+      page.shelves.map((s, i) => (
+        // Первая полка под Top Shelf встаёт ниже — сверху остаётся полоска кадра с названием, как в tvOS 26
+        <ShelfRow key={s.id} shelf={s} onSelect={onOpen} stick={i === 0 && page.hero.length ? FIRST_SHELF_STICK : undefined} />
+      )),
+    [page],
+  );
+
   if (error) return <Message title="Нет связи с TMDB" text="Проверьте интернет и откройте вкладку ещё раз." />;
   if (!page) return <Spinner />;
   if (!page.hero.length && !page.shelves.length) {
@@ -125,10 +141,7 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
         ) : (
           <div class="page__top" />
         )}
-        {page.shelves.map((s, i) => (
-          // Первая полка под Top Shelf встаёт ниже — сверху остаётся полоска кадра с названием, как в tvOS 26
-          <ShelfRow key={s.id} shelf={s} onSelect={onOpen} stick={i === 0 && page.hero.length ? FIRST_SHELF_STICK : undefined} />
-        ))}
+        {shelves}
         <div class="page__end" />
       </div>
     </>

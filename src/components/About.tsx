@@ -5,9 +5,9 @@
  *   «Информация» / «Языки» / «Создатели» — три панели с подробностями.
  * Всё фокусируется пультом, «ОК» открывает карточку или панель целиком.
  */
-import type { ComponentChildren } from "preact";
-import type { Details, DetailsInfo } from "../data/details";
-import { formatNumber, kpRows, score, type Kp } from "../api/kinopoisk";
+import type { ComponentChildren } from 'preact';
+import type { Details, DetailsInfo } from '../data/details';
+import { formatNumber, kpRows, score, type Kp } from '../api/kinopoisk';
 
 /** Что показать в окне по «ОК»: заголовок и строки «название — значение». */
 export interface MoreContent {
@@ -18,36 +18,28 @@ export interface MoreContent {
 
 interface Props {
   d: Details;
-  onMore: (content: MoreContent | "desc") => void;
+  onMore: (content: MoreContent | 'desc') => void;
 }
 
 export function AboutSection({ d, kp, onMore }: Props & { kp: Kp | null }) {
   const info = d.info;
   if (!info) return null;
   const money = moneyRows(info, kp);
-  const tagline =
-    info.tagline && `«${info.tagline.replace(/^[«"„“]+|[»"“”]+$/g, "")}»`; // у TMDB бывает уже в кавычках
+  const tagline = info.tagline && `«${info.tagline.replace(/^[«"„“]+|[»"“”]+$/g, '')}»`; // у TMDB бывает уже в кавычках
   return (
     <section class="shelf about" data-section>
       <h2 class="shelf__title">Описание</h2>
       {/* Карточек бывает больше, чем помещается (с Кинопоиском) — ряд листается, как полка */}
       <div class="shelf__viewport">
         <div class="shelf__track about__row" data-scroll-x>
-          <Card cls="about__card--main" onClick={() => onMore("desc")}>
+          <Card cls="about__card--main" onClick={() => onMore('desc')}>
             <div class="about__title">{d.item.title}</div>
-            <div class="about__sub">{d.genres.join(", ")}</div>
-            <p class="about__text">
-              {d.description || "Описание отсутствует."}
-            </p>
+            <div class="about__sub">{d.genres.join(', ')}</div>
+            <p class="about__text">{d.description || 'Описание отсутствует.'}</p>
             <More />
           </Card>
           {tagline && (
-            <Card
-              cls="about__card--quote"
-              onClick={() =>
-                onMore({ title: "Слоган", text: tagline, rows: [] })
-              }
-            >
+            <Card cls="about__card--quote" onClick={() => onMore({ title: 'Слоган', text: tagline, rows: [] })}>
               <div class="about__label">Слоган</div>
               <p class="about__quote">{tagline}</p>
             </Card>
@@ -57,13 +49,10 @@ export function AboutSection({ d, kp, onMore }: Props & { kp: Kp | null }) {
               cls="about__card--score"
               onClick={() =>
                 onMore({
-                  title: "Оценка зрителей",
+                  title: 'Оценка зрителей',
                   rows: [
-                    [
-                      "Оценка TMDB",
-                      `${(info.score! / 10).toFixed(1).replace(".", ",")} из 10`,
-                    ],
-                    ["Голосов", formatNumber(info.votes || 0)],
+                    ['Оценка TMDB', `${(info.score! / 10).toFixed(1).replace('.', ',')} из 10`],
+                    ['Голосов', formatNumber(info.votes || 0)],
                   ],
                 })
               }
@@ -72,24 +61,17 @@ export function AboutSection({ d, kp, onMore }: Props & { kp: Kp | null }) {
                 {info.score}
                 <small>%</small>
               </div>
-              <div class={`about__source${info.score >= 60 ? " is-good" : ""}`}>
-                TMDB
-              </div>
+              <div class={`about__source${info.score >= 60 ? ' is-good' : ''}`}>TMDB</div>
               <div class="about__stats">
                 <span>Голосов</span>
                 <b>{formatNumber(info.votes || 0)}</b>
                 <span>Оценка</span>
-                <b>{(info.score / 10).toFixed(1).replace(".", ",")}/10</b>
+                <b>{(info.score / 10).toFixed(1).replace('.', ',')}/10</b>
               </div>
             </Card>
           )}
           {kp && kp.kp && (
-            <Card
-              cls="about__card--score"
-              onClick={() =>
-                onMore({ title: "Оценки Кинопоиска", rows: kpRows(kp) })
-              }
-            >
+            <Card cls="about__card--score" onClick={() => onMore({ title: 'Оценки Кинопоиска', rows: kpRows(kp) })}>
               <div class="about__score">{score(kp.kp.value)}</div>
               <div class={`about__source about__source--kp`}>КИНОПОИСК</div>
               <div class="about__stats">
@@ -103,10 +85,7 @@ export function AboutSection({ d, kp, onMore }: Props & { kp: Kp | null }) {
             </Card>
           )}
           {money.length > 0 && (
-            <Card
-              cls="about__card--money"
-              onClick={() => onMore({ title: "Бюджет и сборы", rows: money })}
-            >
+            <Card cls="about__card--money" onClick={() => onMore({ title: 'Бюджет и сборы', rows: money })}>
               <div class="about__label">Бюджет и сборы</div>
               {money.map(([k, v]) => (
                 <div class="about__money" key={k}>
@@ -123,13 +102,7 @@ export function AboutSection({ d, kp, onMore }: Props & { kp: Kp | null }) {
 }
 
 /** «Знаете ли вы, что…» — факты с Кинопоиска: ряд карточек, «ОК» — факт целиком. */
-export function FactsSection({
-  facts,
-  onMore,
-}: {
-  facts: string[];
-  onMore: Props["onMore"];
-}) {
+export function FactsSection({ facts, onMore }: { facts: string[]; onMore: Props['onMore'] }) {
   return (
     <section class="shelf about about--facts" data-section>
       <h2 class="shelf__title">Знаете ли вы, что…</h2>
@@ -139,9 +112,7 @@ export function FactsSection({
             <Card
               key={i}
               cls="about__card--fact"
-              onClick={() =>
-                onMore({ title: "Знаете ли вы, что…", text: f, rows: [] })
-              }
+              onClick={() => onMore({ title: 'Знаете ли вы, что…', text: f, rows: [] })}
             >
               <p class="about__fact">{f}</p>
               <More />
@@ -156,43 +127,32 @@ export function FactsSection({
 export function InfoSection({ d, onMore }: Props) {
   const info = d.info;
   if (!info) return null;
-  const show = d.kind === "show";
+  const show = d.kind === 'show';
 
   const general = rows([
-    [show ? "Телеканал" : "Студия", info.studios.join(", ")],
-    [show ? "Годы" : "Релиз", info.released],
-    ["Статус", info.status],
-    [
-      show ? "Сезоны" : "Длительность",
-      show && info.episodes
-        ? `${d.runtime}, ${info.episodes} серий`
-        : d.runtime,
-    ],
-    ["Возраст", d.age],
-    [
-      info.countries.length > 1 ? "Страны" : "Страна",
-      info.countries.join(", "),
-    ],
+    [show ? 'Телеканал' : 'Студия', info.studios.join(', ')],
+    [show ? 'Годы' : 'Релиз', info.released],
+    ['Статус', info.status],
+    [show ? 'Сезоны' : 'Длительность', show && info.episodes ? `${d.runtime}, ${info.episodes} серий` : d.runtime],
+    ['Возраст', d.age],
+    [info.countries.length > 1 ? 'Страны' : 'Страна', info.countries.join(', ')],
   ]);
   const langs = rows([
-    ["Исходный язык", info.originalLanguage],
-    ["Оригинальное название", info.originalTitle],
-    ["Языки в фильме", info.languages.join(", ")],
+    ['Исходный язык', info.originalLanguage],
+    ['Оригинальное название', info.originalTitle],
+    ['Языки в фильме', info.languages.join(', ')],
   ]);
   const people = rows([
-    [
-      show ? "Создатели" : info.directors.length > 1 ? "Режиссёры" : "Режиссёр",
-      info.directors.join(", "),
-    ],
-    ["Сценарий", info.writers.join(", ")],
-    ["Продюсеры", info.producers.join(", ")],
-    ["Композитор", info.music.join(", ")],
+    [show ? 'Создатели' : info.directors.length > 1 ? 'Режиссёры' : 'Режиссёр', info.directors.join(', ')],
+    ['Сценарий', info.writers.join(', ')],
+    ['Продюсеры', info.producers.join(', ')],
+    ['Композитор', info.music.join(', ')],
   ]);
 
   const cols: [string, [string, string][]][] = [
-    ["Информация", general],
-    ["Языки", langs],
-    ["Создатели", people],
+    ['Информация', general],
+    ['Языки', langs],
+    ['Создатели', people],
   ];
 
   return (
@@ -202,11 +162,7 @@ export function InfoSection({ d, onMore }: Props) {
         .map(([title, r]) => (
           <div class="infocol" key={title}>
             <h2 class="infocol__title">{title}</h2>
-            <div
-              class="infocol__panel"
-              data-focusable
-              onClick={() => onMore({ title, rows: r })}
-            >
+            <div class="infocol__panel" data-focusable onClick={() => onMore({ title, rows: r })}>
               <div class="infocol__body">
                 {r.map(([k, v]) => (
                   <div class="infocol__row" key={k}>
@@ -223,15 +179,7 @@ export function InfoSection({ d, onMore }: Props) {
   );
 }
 
-function Card({
-  cls,
-  onClick,
-  children,
-}: {
-  cls: string;
-  onClick: () => void;
-  children: ComponentChildren;
-}) {
+function Card({ cls, onClick, children }: { cls: string; onClick: () => void; children: ComponentChildren }) {
   return (
     <div class={`about__card ${cls}`} data-focusable onClick={onClick}>
       {children}
@@ -249,8 +197,8 @@ function rows(list: [string, string | undefined][]): [string, string][] {
 function moneyRows(info: DetailsInfo, kp: Kp | null) {
   const m = kp ? kp.money : {};
   return rows([
-    ["Бюджет", info.budget || m.BUDGET],
-    ["Сборы в мире", info.revenue || m.WORLD],
-    ["Сборы в России", m.RUS],
+    ['Бюджет', info.budget || m.BUDGET],
+    ['Сборы в мире', info.revenue || m.WORLD],
+    ['Сборы в России', m.RUS],
   ]);
 }

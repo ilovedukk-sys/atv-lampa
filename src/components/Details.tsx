@@ -6,7 +6,7 @@
  * Открывается мгновенно с тем, что известно из карточки; остальное подгружается из TMDB,
  * а если в «Настройках» включён Кинопоиск — его оценки, факты и сборы (после анимации открытия).
  */
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Item } from '../data/types';
 import { getDetails, quickDetails, type Details } from '../data/details';
 import { hasTmdb, parseId } from '../api/tmdb';
@@ -43,7 +43,7 @@ const OPEN_ANIMATION_MS = 450;
 export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, warm }: Props) {
   const [tmdb, setD] = useState<Details>(() => (fromTmdb(item) ? quickDetails(item) : getDetails(item)));
   const [kp, setKp] = useState<Kp | null>(null);
-  const d = withKp(tmdb, kp); // TMDB главный, Кинопоиск заполняет пробелы
+  const d = useMemo(() => withKp(tmdb, kp), [tmdb, kp]); // TMDB главный, Кинопоиск заполняет пробелы
   const root = useRef<HTMLDivElement>(null);
   const desc = useRef<HTMLDivElement>(null);
   // Окно «ЕЩЁ»: полное описание или панель из нижних разделов
@@ -146,6 +146,49 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
     onWatch(it, { episode: { season: Number(m[1]), episode: Number(m[2]) } });
   };
 
+  /*
+   * Нижние разделы — заново, только когда пришли данные или достроился следующий раздел.
+   * Иначе экран сравнивался бы целиком при каждом событии приложения (уведомление, экран актёра
+   * или раздач поверх, возврат) — сотни элементов на слабом ТВ. Те же объекты разметки Preact пропускает.
+   */
+  const lower = useMemo(
+    () => (
+      <>
+        {shown >= 1 && d.kind === 'show' && d.seasons.length > 0 && <Seasons d={d} onSelect={pickEpisode} />}
+        {shown >= 2 && trailerItems.length > 0 && (
+          <ShelfRow
+            shelf={{ id: 'trailers', title: 'Трейлеры', kind: 'episode', items: trailerItems }}
+            onSelect={(x) => trailer(d.trailers.filter((t) => 'trailer:' + t.key === x.id)[0])}
+          />
+        )}
+        {shown >= 3 && d.cast.length > 0 && (
+          <ShelfRow
+            shelf={{ id: 'cast', title: 'Актёры и съёмочная группа', kind: 'person', items: d.cast }}
+            onSelect={(p) =>
+              p.id.indexOf('person:') === 0 ? onOpen(p) : notify('Страница актёра работает с ключом TMDB')
+            }
+          />
+        )}
+        {shown >= 4 && d.similar.length > 0 && (
+          <ShelfRow shelf={{ id: 'similar', title: 'Похожее', kind: 'poster', items: d.similar }} onSelect={onOpen} />
+        )}
+        {/* Подробности — на сером фоне, как в Apple TV: кадр фильма за ними не мешает читать */}
+        {shown >= 5 && d.info && <div class="details__fade" />}
+        {shown >= 5 && d.info ? (
+          <div class="details__lower">
+            <AboutSection d={d} kp={kp} onMore={openMore} />
+            {shown >= 6 && kp && kp.facts.length > 0 && <FactsSection facts={kp.facts} onMore={openMore} />}
+            {shown >= 7 && <InfoSection d={d} onMore={openMore} />}
+            <div class="page__end" />
+          </div>
+        ) : (
+          <div class="page__end" />
+        )}
+      </>
+    ),
+    [d, kp, shown],
+  );
+
   return (
     <div ref={root} class={`screen details${active ? '' : ' is-hidden'}`} data-screen>
       <div class="backdrop__slide">
@@ -164,7 +207,11 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
             {resumable && (
               <div class="details__progress">
                 <span class="details__bar">
-                  <i style={{ width: `${Math.round((last!.time / last!.duration) * 100)}%` }} />
+                  <i
+                    style={{
+                      width: `${Math.round((last!.time / last!.duration) * 100)}%`,
+                    }}
+                  />
                 </span>
                 {[last!.label, remaining(last!)].filter(Boolean).join(' · ')}
               </div>
@@ -181,36 +228,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
           </div>
         </section>
 
-        {shown >= 1 && d.kind === 'show' && d.seasons.length > 0 && (
-          <Seasons d={d} onSelect={pickEpisode} />
-        )}
-        {shown >= 2 && trailerItems.length > 0 && (
-          <ShelfRow
-            shelf={{ id: 'trailers', title: 'Трейлеры', kind: 'episode', items: trailerItems }}
-            onSelect={(x) => trailer(d.trailers.filter((t) => 'trailer:' + t.key === x.id)[0])}
-          />
-        )}
-        {shown >= 3 && d.cast.length > 0 && (
-          <ShelfRow
-            shelf={{ id: 'cast', title: 'Актёры и съёмочная группа', kind: 'person', items: d.cast }}
-            onSelect={(p) => (p.id.indexOf('person:') === 0 ? onOpen(p) : notify('Страница актёра работает с ключом TMDB'))}
-          />
-        )}
-        {shown >= 4 && d.similar.length > 0 && (
-          <ShelfRow shelf={{ id: 'similar', title: 'Похожее', kind: 'poster', items: d.similar }} onSelect={onOpen} />
-        )}
-        {/* Подробности — на сером фоне, как в Apple TV: кадр фильма за ними не мешает читать */}
-        {shown >= 5 && d.info && <div class="details__fade" />}
-        {shown >= 5 && d.info ? (
-          <div class="details__lower">
-            <AboutSection d={d} kp={kp} onMore={openMore} />
-            {shown >= 6 && kp && kp.facts.length > 0 && <FactsSection facts={kp.facts} onMore={openMore} />}
-            {shown >= 7 && <InfoSection d={d} onMore={openMore} />}
-            <div class="page__end" />
-          </div>
-        ) : (
-          <div class="page__end" />
-        )}
+        {lower}
       </div>
 
       {more && (

@@ -62,14 +62,45 @@ export function focus(el: HTMLElement, byPointer = false) {
   // так браузеру не приходится пересчитывать раскладку дважды за одно нажатие
   if (!byPointer) ensureVisible(el);
 
-  if (current) current.classList.remove('is-focused');
+  if (current) {
+    current.classList.remove('is-focused');
+    settle(current);
+  }
   current = el;
+  unsettle(el);
   el.classList.add('is-focused');
 
   const group = el.closest('[data-focus-group]') as HTMLElement | null;
   if (group) remembered.set(group, el);
   listeners.forEach((fn) => fn(el));
   el.dispatchEvent(new CustomEvent('tvfocus'));
+}
+
+/*
+ * Элемент, только что потерявший фокус, ещё ~0,5 с плавно уменьшается обратно. На это время
+ * он получает класс was-focused, и CSS держит его поверх соседей (см. «слои при фокусе» в app.css).
+ */
+const SETTLE_MS = 550;
+const settling = new Map<HTMLElement, number>();
+
+function settle(el: HTMLElement) {
+  unsettle(el);
+  el.classList.add('was-focused');
+  settling.set(
+    el,
+    window.setTimeout(() => {
+      el.classList.remove('was-focused');
+      settling.delete(el);
+    }, SETTLE_MS),
+  );
+}
+
+function unsettle(el: HTMLElement) {
+  const t = settling.get(el);
+  if (t === undefined) return;
+  clearTimeout(t);
+  settling.delete(el);
+  el.classList.remove('was-focused');
 }
 
 /**
@@ -347,7 +378,13 @@ function offsetWithin(el: HTMLElement, ancestor: HTMLElement, axis: 'x' | 'y' = 
 function setScroll(el: HTMLElement, value: number, axis: 'x' | 'y') {
   if (scrollTargets.get(el) === value) return;
   scrollTargets.set(el, value);
-  el.style.transform = axis === 'x' ? `translate3d(${-value}px,0,0)` : `translate3d(0,${-value}px,0)`;
+  /*
+   * Полку сдвигаем через CSS-переменную (transform задан в app.css), а не transform в style:
+   * слой с transform прямо в style браузер ТВ считает «движущимся» и всё, что рисуется после него,
+   * тоже выносит в отдельные слои. Страницу и фон — по-старому: после них других слоёв нет.
+   */
+  if (axis === 'x') el.style.setProperty('--sx', `${-value}px`);
+  else el.style.transform = `translate3d(0,${-value}px,0)`;
 }
 
 /** «Упор» — карточка чуть дёргается, когда дальше идти некуда (как в tvOS). */

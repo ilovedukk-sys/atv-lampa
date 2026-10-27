@@ -63,7 +63,7 @@ if (process.env.LAYERS_SIZES) {
       }
     }
     total += l.width * l.height;
-    console.log(`  ${String(Math.round(l.width)).padStart(5)}×${String(Math.round(l.height)).padEnd(5)} ${who}`);
+    console.log(`  #${String(l.layerId).padEnd(4)} ${String(Math.round(l.width)).padStart(5)}×${String(Math.round(l.height)).padEnd(5)} ${who}`);
   }
   console.log(`Площадь слоёв: ${(total / (1920 * 1080)).toFixed(1)} экрана`);
 }

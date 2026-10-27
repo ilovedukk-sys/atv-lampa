@@ -21,6 +21,8 @@ import { cycleEffects, isUltra } from './core/lite';
 import { loadPage } from './data/catalog';
 
 const BENCH = benchRequested();
+// Для опытов с профилировщиком: {"still":1} — Top Shelf не листается сам, иначе смена слайда путает замеры
+const STILL = launchParam('still') !== null;
 
 // Разогрев экрана фильма: через сколько после загрузки главной и сколько держать (нижние разделы — ~1,1 с)
 const WARM_DELAY_MS = 2000;
@@ -185,7 +187,7 @@ export function App() {
             key={tab}
             tab={tab}
             visible={homeVisible}
-            bench={BENCH}
+            bench={BENCH || STILL}
             onOpen={openItem}
             onWatch={watch}
             notify={notify}

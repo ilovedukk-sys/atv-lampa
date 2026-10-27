@@ -297,7 +297,7 @@ button {
 
 /* ---------- полки ---------- */
 
-.shelf { position: relative; padding-top: 34px; }
+.shelf { padding-top: 34px; }
 
 .shelf__title {
   margin: 0 0 22px var(--safe-x);
@@ -306,7 +306,10 @@ button {
   color: rgba(255, 255, 255, 0.92);
 }
 
-.shelf__viewport { position: relative; width: 1920px; }
+.shelf__viewport { width: 1920px; }
+
+/* Горизонтальная прокрутка: --sx ставит движок фокуса (core/focus.ts, setScroll) */
+[data-scroll-x] { transform: translate3d(var(--sx, 0px), 0, 0); }
 
 .shelf__track {
   position: relative;
@@ -319,6 +322,21 @@ button {
 }
 
 /* ---------- карточки ---------- */
+
+/*
+ * Слои при фокусе (замер трейсом на ТВ). Пока карточка или кнопка увеличивается/уменьшается,
+ * браузер выносит её в отдельный слой — и всё, что рисуется ПОСЛЕ неё, тоже «на всякий случай»
+ * переносит в слои и перерисовывает: хвост полки (5680×302) и соседние полки (1920×517) на каждое
+ * нажатие. z-index поднимает анимируемый элемент над соседями, и рисовать после него нечего.
+ * was-focused — элемент, который ещё уменьшается после ухода фокуса (ставит core/focus.ts).
+ * Полки (.shelf, .shelf__viewport) поэтому и не позиционированы. На главной слоёв 35 → 25.
+ */
+.card.is-focused, .card.was-focused,
+.btn.is-focused, .btn.was-focused,
+.season-tab.is-focused, .season-tab.was-focused,
+.details__desc.is-focused, .details__desc.was-focused,
+.about__card.is-focused, .about__card.was-focused,
+.infocol__panel.is-focused, .infocol__panel.was-focused { position: relative; z-index: 1; }
 
 .card { flex-shrink: 0; }
 .card--landscape { width: 400px; margin-right: 40px; }
