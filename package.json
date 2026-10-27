@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "icons": "node scripts/make-icons.mjs",
-    "tv:package": "ares-package dist -o build",
+    "tv:package": "node scripts/tv.mjs package",
     "tv:install": "node scripts/tv.mjs install",
     "tv:launch": "node scripts/tv.mjs launch",
     "tv:inspect": "node scripts/tv.mjs inspect",

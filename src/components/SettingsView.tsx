@@ -11,10 +11,12 @@ import { cycleQuality, getQuality, QUALITY_LABELS } from '../core/quality';
 import { echo, setTsUrl, tsUrl } from '../api/torrserver';
 import { getParser, setParser } from '../api/releases';
 import { checkKpKey, kpKey, kpProblem, setKpKey } from '../api/kinopoisk';
+import { switchUiRes, uiRes, UI_RES_LABELS, type UiRes } from '../core/resolution';
+import { hasWebOS } from '../core/webos';
 import { focus, getFocused } from '../core/focus';
 import { TextInput } from './TextInput';
 
-const VERSION = '0.6.0';
+const VERSION = '0.7.0';
 
 interface Row {
   label: string;
@@ -31,6 +33,14 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
   const [editing, setEditing] = useState<Editing>(null);
   const [tsVersion, setTsVersion] = useState<string | null>(null); // null — проверяем, '' — не отвечает
   const [kpState, setKpState] = useState<string | null>(null); // null — проверяем, иначе готовая надпись
+  // Смена разрешения перезапускает приложение — поэтому «ОК» дважды: первое нажатие только спрашивает
+  const [resAsk, setResAsk] = useState(false);
+  const [resBusy, setResBusy] = useState(false);
+  useEffect(() => {
+    if (!resAsk) return;
+    const t = setTimeout(() => setResAsk(false), 4000);
+    return () => clearTimeout(t);
+  }, [resAsk]);
   const onOff = (v: boolean) => (v ? 'Вкл.' : 'Выкл.');
   const short = (url: string) => url.replace(/^https?:\/\//, '');
 
@@ -105,7 +115,32 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
     },
   ];
 
-  const view: Row[] = [
+  const otherRes: UiRes = uiRes() === '1280x720' ? '1920x1080' : '1280x720';
+  const view: Row[] = [];
+  if (hasWebOS()) {
+    view.push({
+      label: 'Разрешение интерфейса',
+      hint: '720p — плавнее (для этого ТВ), 1080p — чётче текст. Приложение перезапустится',
+      value: () =>
+        resBusy
+          ? 'Перезапуск…'
+          : resAsk
+            ? `«ОК» ещё раз — ${UI_RES_LABELS[otherRes]}`
+            : UI_RES_LABELS[uiRes()],
+      action: () => {
+        if (resBusy) return;
+        if (!resAsk) return setResAsk(true);
+        setResAsk(false);
+        setResBusy(true);
+        notify(`Переключаем на ${UI_RES_LABELS[otherRes]} — приложение откроется заново через несколько секунд`);
+        switchUiRes(otherRes).catch((e: Error) => {
+          setResBusy(false);
+          notify(e.message);
+        });
+      },
+    });
+  }
+  view.push(
     {
       label: 'Качество обложек',
       hint: 'Низкое — меньше трафика и памяти, плавнее на слабых ТВ; высокое — чётче',
@@ -141,7 +176,7 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
         notify('Кеш очищен — данные загрузятся заново');
       },
     },
-  ];
+  );
 
   const group = (title: string, rows: Row[], top = false) => (
     <section class="settings" data-section data-section-top={top || undefined}>
