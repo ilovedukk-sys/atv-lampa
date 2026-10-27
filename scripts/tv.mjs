@@ -23,7 +23,7 @@ const TV_DIR = '/media/developer/atvlampa';
 const variantIpk = (res) => `build/ui-${res}/${info.id}_${info.version}_all.ipk`;
 // SSH через bash — тот же ssh и known_hosts, что у снимка экрана ниже
 const ssh = (command, input) =>
-  spawnSync('bash', ['-c', `ssh -i ~/.ssh/webos_tv -o BatchMode=yes -o ConnectTimeout=5 root@${HOST} '${command.replace(/'/g, "'\''")}'`], {
+  spawnSync('bash', ['-c', `ssh -i ~/.ssh/webos_tv -o BatchMode=yes -o ConnectTimeout=5 root@${HOST} '${command.replace(/'/g, "'\\''")}'`], {
     input,
     encoding: input ? undefined : 'utf8',
   });
