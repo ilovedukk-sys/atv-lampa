@@ -209,6 +209,9 @@ A/B-замер варианта CSS (пишем его под `html.exp`): `BENC
 - Название в интерфейсе и `<title>` — «ATV Lampa» (не «Apple TV»: чужой товарный знак). Скрипты отладки ищут
   приложение по title «ATV Lampa». README — для пользователей, CHANGELOG.md — что нового, LICENSE — MIT.
 - Сам не публиковать: куда и когда выкладывать — решает пользователь.
+- Опубликовано 27.10.2026: открытый репозиторий https://github.com/ilovedukk-sys/atv-lampa (remote `origin`),
+  выпуск v1.0.0 — два .ipk и SHA256SUMS (`gh release create vX.Y.Z release/* --notes-file …`).
+  Скачанные с GitHub .ipk проверены: ключа нет, resolution у каждого свой.
 
 ## Заметки
 - Проект в git (ветка `main`, первый коммит — этапы 1–4). `.env.local` с ключом TMDB не коммитится.
