@@ -1,6 +1,10 @@
 import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
 import legacy from '@vitejs/plugin-legacy';
+import { readFileSync } from 'node:fs';
+
+// Версия приложения — одна на всё: из appinfo.json (её же видит webOS)
+const appinfo = JSON.parse(readFileSync('public/appinfo.json', 'utf8'));
 
 /**
  * На телевизоре приложение открывается с диска (file://).
@@ -30,6 +34,7 @@ export default defineConfig({
     stripCrossorigin(),
   ],
   server: { port: 5173 },
+  define: { __APP_VERSION__: JSON.stringify(appinfo.version) },
   // PROFILE=1 — сборка без сжатия, чтобы в профиле (scripts/profile.mjs) были видны имена функций
   build: process.env.PROFILE ? { minify: false } : {},
 });

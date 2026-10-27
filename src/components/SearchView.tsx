@@ -67,7 +67,7 @@ export function SearchView({ active, onOpen }: Props) {
   if (!hasTmdb) {
     return (
       <div class="page" data-scroll-y>
-        <Message title="Поиск работает через TMDB" text="Добавьте ключ TMDB — см. файл .env.example." />
+        <Message title="Поиск работает через TMDB" text="Укажите ключ TMDB в «Настройках»." />
       </div>
     );
   }

@@ -6,17 +6,17 @@ import { useEffect, useState } from 'preact/hooks';
 import { soundsEnabled, toggleSounds } from '../core/sound';
 import { cycleEffects, EFFECTS_LABELS, getEffects, isUltra } from '../core/lite';
 import { fpsOn, toggleFps } from '../core/fps';
-import { clearCache, hasTmdb } from '../api/tmdb';
+import { checkTmdbKey, clearCache, hasTmdb, setTmdbKey, tmdbKey } from '../api/tmdb';
 import { cycleQuality, getQuality, QUALITY_LABELS } from '../core/quality';
 import { echo, setTsUrl, tsUrl } from '../api/torrserver';
 import { getParser, setParser } from '../api/releases';
 import { checkKpKey, kpKey, kpProblem, setKpKey } from '../api/kinopoisk';
-import { switchUiRes, uiRes, UI_RES_LABELS, type UiRes } from '../core/resolution';
+import { switchUiRes, uiRes, uiResAvailable, UI_RES_LABELS, type UiRes } from '../core/resolution';
 import { hasWebOS } from '../core/webos';
 import { focus, getFocused } from '../core/focus';
 import { TextInput } from './TextInput';
 
-const VERSION = '0.7.0';
+const VERSION = __APP_VERSION__; // из public/appinfo.json (vite.config.ts)
 
 interface Row {
   label: string;
@@ -25,7 +25,7 @@ interface Row {
   action: () => void;
 }
 
-type Field = 'ts' | 'parser' | 'parserKey' | 'kp';
+type Field = 'tmdb' | 'ts' | 'parser' | 'parserKey' | 'kp';
 type Editing = null | { field: Field; back: HTMLElement | null };
 
 export function SettingsView({ notify }: { notify: (text: string) => void }) {
@@ -36,6 +36,17 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
   // Смена разрешения перезапускает приложение — поэтому «ОК» дважды: первое нажатие только спрашивает
   const [resAsk, setResAsk] = useState(false);
   const [resBusy, setResBusy] = useState(false);
+  // Переключать есть чем, только если при установке с ПК на ТВ положили оба варианта (scripts/tv.mjs)
+  const [resOk, setResOk] = useState(false);
+  useEffect(() => {
+    if (hasWebOS()) uiResAvailable().then(setResOk);
+  }, []);
+  // Первый запуск без ключа TMDB открывает «Настройки» (App.tsx) — сразу на строке ключа
+  useEffect(() => {
+    if (hasTmdb || getFocused()) return;
+    const first = document.querySelector('.setting') as HTMLElement | null;
+    if (first) focus(first);
+  }, []);
   useEffect(() => {
     if (!resAsk) return;
     const t = setTimeout(() => setResAsk(false), 4000);
@@ -108,6 +119,12 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
 
   const data: Row[] = [
     {
+      label: 'Ключ TMDB',
+      hint: 'Откуда берутся фильмы, постеры и описания. Бесплатный ключ: themoviedb.org → Settings → API',
+      value: () => (hasTmdb ? '✓ ••••' + tmdbKey().slice(-4) : 'Не указан'),
+      action: () => edit('tmdb'),
+    },
+    {
       label: 'Кинопоиск',
       hint: 'Оценки КП и IMDb, факты, сборы в России. Бесплатный ключ: kinopoiskapiunofficial.tech',
       value: () => (kpState === null ? 'Проверяем…' : kpState),
@@ -117,7 +134,7 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
 
   const otherRes: UiRes = uiRes() === '1280x720' ? '1920x1080' : '1280x720';
   const view: Row[] = [];
-  if (hasWebOS()) {
+  if (resOk) {
     view.push({
       label: 'Разрешение интерфейса',
       hint: '720p — плавнее (для этого ТВ), 1080p — чётче текст. Приложение перезапустится',
@@ -206,9 +223,16 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
       <div class="page" data-scroll-y>
         <div class="tabpage__head">
           <h1>Настройки</h1>
+          {!hasTmdb && (
+            <div class="tabpage__sub">
+              Добро пожаловать! Чтобы появились фильмы и сериалы, укажите ключ TMDB — он бесплатный.
+            </div>
+          )}
         </div>
-        {group('Источники видео', sources, true)}
-        {group('Данные о фильмах', data)}
+        {/* Без ключа TMDB главное — ввести его, поэтому этот раздел первым */}
+        {!hasTmdb && group('Данные о фильмах', data, true)}
+        {group('Источники видео', sources, hasTmdb)}
+        {hasTmdb && group('Данные о фильмах', data)}
         {group('Приложение', view)}
         <div class="settings__about">
           <b>ATV Lampa {VERSION}</b>
@@ -223,6 +247,35 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
         <div class="page__end" />
       </div>
 
+      {editing && editing.field === 'tmdb' && (
+        <TextInput
+          title="Ключ TMDB"
+          hint="Зарегистрируйтесь на themoviedb.org, откройте Settings → API и скопируйте «API Key» (32 знака). Пусто — выключить."
+          value={tmdbKey()}
+          placeholder="32 знака: буквы a–f и цифры"
+          onCancel={finishEdit}
+          onDone={(v) => {
+            finishEdit();
+            const restart = (text: string) => {
+              notify(text);
+              setTimeout(() => location.reload(), 1500); // ключ читается при запуске
+            };
+            if (!v.trim()) {
+              if (!hasTmdb) return;
+              setTmdbKey('');
+              return restart('Ключ TMDB удалён — перезапускаем приложение');
+            }
+            notify('Проверяем ключ…');
+            checkTmdbKey(v).then(
+              () => {
+                setTmdbKey(v);
+                restart('Ключ подходит — перезапускаем приложение');
+              },
+              (e: Error) => notify(e.message),
+            );
+          }}
+        />
+      )}
       {editing && editing.field === 'ts' && (
         <TextInput
           title="Адрес TorrServer"

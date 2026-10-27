@@ -52,7 +52,8 @@ export interface WatchOptions {
 }
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('home');
+  // Первый запуск без ключа TMDB — сразу в «Настройки»: без ключа нет настоящих фильмов
+  const [tab, setTab] = useState<Tab>(hasTmdb || BENCH ? 'home' : 'settings');
   const [toast, setToast] = useState<string | null>(null);
 
   /*

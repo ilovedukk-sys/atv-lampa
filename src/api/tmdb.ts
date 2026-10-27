@@ -1,7 +1,8 @@
 /**
  * Клиент TMDB (themoviedb.org): запросы, кеш, перевод ответов в наш формат (Item).
  *
- * Ключ берётся из файла .env.local (VITE_TMDB_KEY) — см. .env.example.
+ * Ключ пользователь вводит в «Настройках» (localStorage tmdbKey); при разработке — из .env.local
+ * (VITE_TMDB_KEY, см. .env.example). В сборку для выпуска ключ не попадает (npm run release).
  * Подходит и короткий «API Key» (32 символа), и длинный «Read Access Token».
  * Если TMDB недоступен в сети — адреса можно заменить на прокси (VITE_TMDB_API_URL / VITE_TMDB_IMAGE_URL).
  */
@@ -9,10 +10,48 @@ import type { Item, Shelf } from '../data/types';
 
 const API = (import.meta.env.VITE_TMDB_API_URL as string) || 'https://api.themoviedb.org/3';
 const IMG = (import.meta.env.VITE_TMDB_IMAGE_URL as string) || 'https://image.tmdb.org/t/p';
-const KEY = ((import.meta.env.VITE_TMDB_KEY as string) || '').trim();
+const STORAGE = 'tmdbKey';
 const LANG = 'ru-RU';
 
+function savedKey(): string {
+  try {
+    const saved = localStorage.getItem(STORAGE);
+    if (saved !== null) return saved.trim();
+  } catch (e) {
+    /* без настроек */
+  }
+  return ((import.meta.env.VITE_TMDB_KEY as string) || '').trim();
+}
+
+/* Ключ читается один раз при запуске: после смены в «Настройках» приложение перезапускается */
+const KEY = savedKey();
+
 export const hasTmdb = KEY.length > 0;
+export const tmdbKey = () => KEY;
+
+/** Проверить ключ до сохранения: ошибка с текстом для пользователя, если не подходит или нет связи. */
+export function checkTmdbKey(key: string): Promise<void> {
+  const k = key.trim();
+  const bearer = k.length > 40;
+  return fetch(`${API}/configuration${bearer ? '' : '?api_key=' + encodeURIComponent(k)}`, bearer ? { headers: { Authorization: `Bearer ${k}` } } : undefined).then(
+    (r) => {
+      if (r.status === 401) throw new Error('Ключ TMDB не подходит — проверьте, что скопирован целиком');
+      if (!r.ok) throw new Error(`TMDB ответил ошибкой ${r.status}`);
+    },
+    () => {
+      throw new Error('Нет связи с TMDB — проверьте интернет');
+    },
+  );
+}
+
+/** Пустой ключ — TMDB выключен (временные данные). */
+export function setTmdbKey(key: string) {
+  try {
+    localStorage.setItem(STORAGE, key.trim());
+  } catch (e) {
+    /* без запоминания */
+  }
+}
 
 /** Размеры картинок подобраны под экран 1920×1080 и память слабого ТВ. */
 export type ImageSize = 'w45' | 'w185' | 'w300' | 'w342' | 'w500' | 'w780' | 'w1280'; // w45 — только фото людей

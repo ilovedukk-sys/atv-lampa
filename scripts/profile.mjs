@@ -11,7 +11,7 @@ const script = process.argv[2] || 'setTimeout(()=>key(40),200); setTimeout(()=>k
 const seconds = Number(process.argv[3] || 3);
 
 const targets = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json();
-const target = targets.find((t) => t.title === 'Apple TV Lampa');
+const target = targets.find((t) => t.title === 'ATV Lampa');
 if (!target) throw new Error('Приложение не запущено на ТВ');
 
 const ws = new WebSocket(target.webSocketDebuggerUrl.replace('127.0.0.1:19998', `127.0.0.1:${PORT}`));

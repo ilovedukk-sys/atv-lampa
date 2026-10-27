@@ -26,6 +26,19 @@ export function uiRes(): UiRes {
 }
 
 /**
+ * Можно ли переключать: есть Homebrew Channel и оба варианта на ТВ. Их кладёт только установка
+ * с компьютера (npm run tv); у того, кто поставил готовый .ipk, пункта в «Настройках» нет.
+ */
+export function uiResAvailable(): Promise<boolean> {
+  if (!hasWebOS()) return Promise.resolve(false);
+  const command = `[ -f ${DIR}/ui-1280x720.ipk ] && [ -f ${DIR}/ui-1920x1080.ipk ] && echo OK`;
+  return luna<{ stdoutString?: string }>('luna://org.webosbrew.hbchannel.service/exec', { command }).then(
+    (r) => (r.stdoutString || '').trim() === 'OK',
+    () => false,
+  );
+}
+
+/**
  * Переключить разрешение. Приложение закроется (его переустанавливает система) и через ~5 с откроется
  * само. Команда работает в фоне от Homebrew Channel — ей не мешает то, что наше приложение закрылось.
  */

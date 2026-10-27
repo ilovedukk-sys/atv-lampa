@@ -69,6 +69,47 @@ if (process.argv[2] === 'package') {
   process.exit(0);
 }
 
+/*
+ * Пакеты для выпуска (npm run release — сборка уже сделана с --mode release, без ключей).
+ * Сначала проверяем, что в сборку не попало ни одно значение из .env.local: ключ TMDB личный,
+ * опубликованный ключ могут заблокировать. Потом — два .ipk с понятными именами и их контрольные суммы.
+ */
+if (process.argv[2] === 'release') {
+  const { createHash } = await import('node:crypto');
+  const { readdirSync, mkdirSync, renameSync } = await import('node:fs');
+  const secrets = existsSync('.env.local')
+    ? readFileSync('.env.local', 'utf8')
+        .split(/\r?\n/)
+        .map((l) => l.replace(/^[^=#]*=/, '').trim())
+        .filter((v) => v.length >= 6)
+    : [];
+  const files = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((f) => (f.isDirectory() ? files(`${dir}/${f.name}`) : [`${dir}/${f.name}`]));
+  for (const f of files('dist')) {
+    const text = readFileSync(f, 'latin1');
+    if (secrets.some((s) => text.indexOf(s) !== -1)) {
+      console.error(`СТОП: в ${f} есть значение из .env.local (ключ или адрес). Собирайте командой npm run release.`);
+      process.exit(1);
+    }
+  }
+  rmSync('release', { recursive: true, force: true });
+  mkdirSync('release');
+  const sums = [];
+  for (const res of RESOLUTIONS) {
+    const dir = `build/app-${res}`;
+    rmSync(dir, { recursive: true, force: true });
+    cpSync('dist', dir, { recursive: true });
+    writeFileSync(`${dir}/appinfo.json`, JSON.stringify({ ...info, resolution: res }, null, 2));
+    rmSync(`build/release-${res}`, { recursive: true, force: true });
+    if (ares('ares-package', [dir, '-o', `build/release-${res}`], true).status !== 0) process.exit(1);
+    const name = `atv-lampa_${info.version}_${res === '1280x720' ? '720p' : '1080p'}.ipk`;
+    renameSync(`build/release-${res}/${info.id}_${info.version}_all.ipk`, `release/${name}`);
+    sums.push(`${createHash('sha256').update(readFileSync(`release/${name}`)).digest('hex')}  ${name}`);
+  }
+  writeFileSync('release/SHA256SUMS.txt', sums.join('\n') + '\n');
+  console.log(`Готово: папка release/ (ключей в сборке нет — проверено)\n${sums.join('\n')}`);
+  process.exit(0);
+}
+
 if (process.argv[2] === 'install') {
   // Ставим в том разрешении, что пользователь выбрал на ТВ (иначе переустановка с ПК сбрасывала бы выбор)
   const current = ((ssh(`grep -o '"resolution": *"[0-9x]*"' /media/developer/apps/usr/palm/applications/${info.id}/appinfo.json`).stdout || '').match(/\d+x\d+/) || [])[0];

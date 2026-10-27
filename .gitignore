@@ -6,3 +6,4 @@ screenshots
 .env.local
 *.local
 *.log
+release

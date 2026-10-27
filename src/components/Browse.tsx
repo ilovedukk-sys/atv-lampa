@@ -116,7 +116,7 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
   if (error) return <Message title="Нет связи с TMDB" text="Проверьте интернет и откройте вкладку ещё раз." />;
   if (!page) return <Spinner />;
   if (!page.hero.length && !page.shelves.length) {
-    return <Message title="Здесь пока пусто" text="Для этой вкладки нужен ключ TMDB — см. файл .env.example." />;
+    return <Message title="Здесь пока пусто" text="Для этой вкладки нужен ключ TMDB — укажите его в «Настройках»." />;
   }
 
   return (
