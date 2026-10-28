@@ -28,12 +28,12 @@
 
 ## Установка
 
-Скачайте один из файлов выпуска:
+Скачайте один из файлов [последнего выпуска](https://github.com/ilovedukk-sys/atv-lampa/releases/latest):
 
 | Файл | Для кого |
 |---|---|
-| `atv-lampa_1.0.0_720p.ipk` | **Рекомендуется.** webOS 4–5 и любые не самые быстрые ТВ: заметно плавнее |
-| `atv-lampa_1.0.0_1080p.ipk` | Быстрые ТВ (webOS 6+): текст чётче |
+| `atv-lampa_<версия>_720p.ipk` | **Рекомендуется.** webOS 4–5 и любые не самые быстрые ТВ: заметно плавнее |
+| `atv-lampa_<версия>_1080p.ipk` | Быстрые ТВ (webOS 6+): текст чётче |
 
 Установить `.ipk` на телевизор проще всего программой
 [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop) (Windows, macOS, Linux):
@@ -42,7 +42,7 @@
 2. В webOS Dev Manager добавьте телевизор (он сам подскажет, как).
 3. Вкладка *Apps* → *Install* → выберите скачанный `.ipk`.
 
-Из командной строки то же самое: `npx ares-install --device tv atv-lampa_1.0.0_720p.ipk`.
+Из командной строки то же самое: `npx ares-install --device tv atv-lampa_1.0.1_720p.ipk`.
 
 > В Developer Mode приложение работает, пока активен режим разработчика (около 50 часов,
 > продлевается кнопкой *Extend*). С Homebrew Channel ограничений нет.
