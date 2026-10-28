@@ -14,6 +14,7 @@ import { checkKpKey, kpKey, kpProblem, setKpKey } from '../api/kinopoisk';
 import { switchUiRes, uiRes, uiResAvailable, UI_RES_LABELS, type UiRes } from '../core/resolution';
 import { hasWebOS } from '../core/webos';
 import { focus, getFocused } from '../core/focus';
+import { cycleSaver, saverLabel } from '../core/screensaver';
 import { TextInput } from './TextInput';
 
 const VERSION = __APP_VERSION__; // из public/appinfo.json (vite.config.ts)
@@ -178,6 +179,22 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
       // notify перерисовывает приложение — в минимальном режиме обложки сразу станут легче
       action: () => notify(`Эффекты: ${EFFECTS_LABELS[cycleEffects()].toLowerCase()}`),
     },
+    {
+      label: 'Заставка',
+      hint: 'Кадры фильмов на весь экран, если долго не нажимать кнопки. Любая кнопка — вернуться',
+      value: () => saverLabel(),
+      action: () => cycleSaver(),
+    },
+  );
+  if (hasTmdb) {
+    view.push({
+      label: 'Посмотреть заставку',
+      hint: 'Включить заставку сейчас',
+      value: () => '',
+      action: () => window.dispatchEvent(new CustomEvent('show-saver')),
+    });
+  }
+  view.push(
     {
       label: 'Счётчик FPS',
       hint: 'Частота кадров в углу экрана. Красная кнопка',

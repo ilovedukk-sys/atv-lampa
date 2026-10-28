@@ -19,6 +19,8 @@ import { benchRequested, launchParam, runBenchmark } from './core/bench';
 import { toggleSounds } from './core/sound';
 import { cycleEffects, isUltra } from './core/lite';
 import { loadPage } from './data/catalog';
+import { Screensaver } from './components/Screensaver';
+import { watchIdle } from './core/screensaver';
 
 const BENCH = benchRequested();
 // Для опытов с профилировщиком: {"still":1} — Top Shelf не листается сам, иначе смена слайда путает замеры
@@ -180,8 +182,28 @@ export function App() {
   const homeVisible = stack.length === 0;
   const playing = stack.length > 0 && stack[stack.length - 1].type === 'player';
 
+  /*
+   * Заставка после нескольких минут без нажатий (core/screensaver.ts) — кроме плеера и замера.
+   * Без ключа TMDB кадров нет — и заставки нет.
+   */
+  const [saver, setSaver] = useState(false);
+  const playingRef = useRef(false);
+  playingRef.current = playing;
+  useEffect(() => {
+    if (BENCH || !hasTmdb) return;
+    const show = () => setSaver(true);
+    // «Посмотреть заставку» в «Настройках» и {"saver":1} / ?saver=1 для проверки
+    window.addEventListener('show-saver', show);
+    if (launchParam('saver') !== null) show();
+    const stop = watchIdle(() => !playingRef.current, show);
+    return () => {
+      stop();
+      window.removeEventListener('show-saver', show);
+    };
+  }, []);
+
   return (
-    <div class={`app${playing ? ' is-playing' : ''}`}>
+    <div class={`app${playing ? ' is-playing' : ''}${saver ? ' is-saver' : ''}`}>
       <div class={`screen home${homeVisible ? '' : ' is-hidden'}`} data-screen>
         {tab === 'home' || tab === 'movies' || tab === 'shows' || tab === 'kids' ? (
           <BrowseView
@@ -259,6 +281,8 @@ export function App() {
           notify={() => {}}
         />
       )}
+
+      {saver && <Screensaver onExit={() => setSaver(false)} />}
 
       <div class={`toast glass${toast ? ' is-visible' : ''}`}>{toast}</div>
     </div>
