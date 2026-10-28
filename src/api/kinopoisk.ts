@@ -8,7 +8,7 @@
  * На один фильм уходит 4 запроса, ответ хранится неделю — лимита хватает с большим запасом.
  */
 import type { Details } from '../data/details';
-import { cached } from './tmdb';
+import { cached, forgetOld } from './tmdb';
 
 const API = 'https://kinopoiskapiunofficial.tech/api';
 const STORAGE = 'kpKey';
@@ -61,6 +61,7 @@ function get<T>(path: string): Promise<T | null> {
       return r.json();
     });
     memory[url].catch(() => delete memory[url]);
+    forgetOld(memory);
   }
   return memory[url];
 }

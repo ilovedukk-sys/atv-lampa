@@ -61,7 +61,20 @@ export function img(path: string | undefined, size: ImageSize): string | undefin
 
 // ---------- запросы и кеш ----------
 
+/*
+ * Ответы TMDB в памяти — чтобы одинаковые запросы не уходили дважды. Только последние MEMORY_MAX:
+ * раньше здесь оставался каждый сырой ответ за всё время работы (подробности фильма с актёрами,
+ * трейлерами и похожими — сотни КБ), и за долгий вечер память ТВ заканчивалась.
+ * Нужное надолго и так лежит в localStorage (cached ниже) уже в нашем компактном виде.
+ */
+const MEMORY_MAX = 40;
 const memory: Record<string, Promise<any>> = {};
+
+/** Забыть самые старые запросы сверх MEMORY_MAX (порядок ключей-адресов — порядок добавления). */
+export function forgetOld(map: Record<string, unknown>) {
+  const keys = Object.keys(map);
+  for (let i = 0; i < keys.length - MEMORY_MAX; i++) delete map[keys[i]];
+}
 
 function request<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
   // Язык можно передать свой (биография актёра по-английски, если русской нет)
@@ -77,6 +90,7 @@ function request<T>(path: string, params: Record<string, string | number> = {}):
       return r.json();
     });
     memory[url].catch(() => delete memory[url]); // ошибку не кешируем
+    forgetOld(memory);
   }
   return memory[url];
 }
@@ -97,12 +111,13 @@ async function cached<T>(key: string, hours: number, load: () => Promise<T>): Pr
     /* битая запись — загрузим заново */
   }
   const value = await load();
-  const json = JSON.stringify({ t: Date.now(), v: value });
+  // h — срок годности: по нему pruneCache удаляет устаревшее
+  const json = JSON.stringify({ t: Date.now(), h: hours, v: value });
   try {
     localStorage.setItem(storageKey, json);
   } catch (e) {
-    // Место кончилось — чистим старый кеш TMDB и пробуем ещё раз
-    clearCache();
+    // Место кончилось — убираем старое и пробуем ещё раз
+    pruneCache(CACHE_LIMIT / 2);
     try {
       localStorage.setItem(storageKey, json);
     } catch (e2) {
@@ -110,6 +125,44 @@ async function cached<T>(key: string, hours: number, load: () => Promise<T>): Pr
     }
   }
   return value;
+}
+
+/*
+ * Уборка кеша TMDB в localStorage. Раньше записи только добавлялись: подробности каждого открытого
+ * фильма (~10 КБ) лежали вечно, за несколько дней — 3,5 млн знаков. Браузер держит localStorage
+ * целиком в памяти, и не в одном экземпляре. Теперь: устаревшее удаляем, а всё вместе — не больше
+ * limit знаков (сначала уходят самые старые записи).
+ */
+const CACHE_LIMIT = 1500000;
+const MAX_HOURS = 24 * 7; // у старых записей срок не указан — считаем самым долгим
+
+export function pruneCache(limit = CACHE_LIMIT) {
+  const now = Date.now();
+  const entries: { k: string; t: number; size: number }[] = [];
+  let total = 0;
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || k.indexOf('tmdb:') !== 0) continue;
+      const raw = localStorage.getItem(k) || '';
+      const m = /^\{"t":(\d+)(?:,"h":([\d.]+))?/.exec(raw);
+      const t = m ? Number(m[1]) : 0;
+      const hours = m && m[2] ? Number(m[2]) : MAX_HOURS;
+      if (!m || now - t > hours * 3600e3) {
+        localStorage.removeItem(k);
+        continue;
+      }
+      entries.push({ k, t, size: k.length + raw.length });
+      total += k.length + raw.length;
+    }
+    entries.sort((a, b) => a.t - b.t);
+    for (let i = 0; i < entries.length && total > limit; i++) {
+      localStorage.removeItem(entries[i].k);
+      total -= entries[i].size;
+    }
+  } catch (e) {
+    /* без localStorage — убирать нечего */
+  }
 }
 
 export function clearCache() {

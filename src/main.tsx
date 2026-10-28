@@ -11,6 +11,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import { App } from './App';
 import { startFpsMeter } from './core/fps';
+import { pruneCache } from './api/tmdb';
 
 /**
  * Интерфейс всегда рисуется в 1920×1080 (как на ТВ) и масштабируется под окно.
@@ -31,3 +32,14 @@ fit();
 
 render(<App />, stage);
 startFpsMeter();
+/*
+ * Уборка кеша (api/tmdb.ts): через 20 с после запуска, когда главная показана и разогрев прошёл,
+ * и потом раз в час — в свободную минуту (чтение всего localStorage, на ТВ ~50 мс).
+ */
+const whenIdle = (fn: () => void) => {
+  const ric = (window as any).requestIdleCallback;
+  if (ric) ric(fn, { timeout: 5000 });
+  else fn();
+};
+window.setTimeout(() => whenIdle(() => pruneCache()), 20000);
+window.setInterval(() => whenIdle(() => pruneCache()), 3600e3);

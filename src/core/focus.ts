@@ -37,7 +37,12 @@ const SECTION_TOP = 150; // где оказывается полка после 
 const SCREEN_H = 1080;
 
 let current: HTMLElement | null = null;
-const scrollTargets = new Map<HTMLElement, number>();
+/*
+ * WeakMap, а не Map: обычный Map держал каждую прокрученную полку и страницу закрытых экранов,
+ * а с ними — весь их DOM и картинки. За час листания фильмов в памяти копились десятки тысяч
+ * «мёртвых» элементов, ТВ уходил в swap и тормозил (замер 28.10.2026, Memory.getDOMCounters).
+ */
+const scrollTargets = new WeakMap<HTMLElement, number>();
 const remembered = new WeakMap<HTMLElement, HTMLElement>();
 const listeners = new Set<(el: HTMLElement) => void>();
 
