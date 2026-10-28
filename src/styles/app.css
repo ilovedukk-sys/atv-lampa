@@ -364,13 +364,36 @@ button {
  * пересматривает все позиционированные элементы и слои. Поэтому карточка максимально простая:
  *   — не слой: ни will-change, ни 3D-преобразований (даже perspective() делает слоем);
  *   — минимум позиционированных элементов: картинка — фон обложки, тень — у самой рамки.
- * Увеличение — только у выбранной карточки, перспектива — только при наклоне курсором.
+ * Увеличение (и с ним слой) — только у выбранной карточки, см. ниже.
  * По замеру: слоёв 212 → 43 (scripts/layers.mjs), профиль кадра — scripts/trace.mjs.
  */
 .card__tilt {
   transition: transform 0.45s var(--spring);
 }
-.card.is-focused .card__tilt { transform: scale(1.1); }
+/*
+ * Увеличение в 1,1 раза — не scale(), а «приближение» в перспективе (28.10.2026, трейсы на ТВ).
+ * С scale() браузер ТВ (растр на видеочипе) перерисовывал карточку заново на КАЖДОМ кадре анимации,
+ * в новом размере, и каждый раз заново загружал её картинку в видеопамять: ~12 мс на кадр, а за нажатие
+ * вниз — до 350 мс работы видеочипа. Слой с перспективой браузер рисует один раз в обычном размере
+ * и дальше только растягивает готовую картинку — как «пониженное разрешение» на время движения
+ * (на глаз почти не отличить, снимок — screenshots/compare-scale-vs-perspective.png).
+ * Размер тот же: 1000 / (1000 − 90,9) = 1,1; при «ОК» 1000 / (1000 − 29,1) = 1,03.
+ * Растр при листании постеров 560–810 → 40–115 мс; на экране 34–37 → 51–56 кадров/с (приложение
+ * после суток работы), у только что запущенного рывков вдвое меньше. Слоёв +3 (только у выбранной).
+ * Перспектива — свойство карточки (а не perspective() в transform): переход none ↔ translateZ
+ * плавный, а perspective() в анимации браузер смешивает неверно. Пока карточка уменьшается
+ * (was-focused), перспектива остаётся. При наклоне курсором своя перспектива — в transform (parallax.ts).
+ */
+.card.is-focused,
+.card.was-focused { perspective: 1000px; }
+.card.is-tilting { perspective: none; }
+/* Центр «приближения» — середина обложки (у карточки под ней ещё подпись), как у scale() */
+.card--poster { perspective-origin: 50% 174px; }
+.card--landscape,
+.card--episode { perspective-origin: 50% 112.5px; }
+.card--genre { perspective-origin: 50% 85px; }
+.card--person { perspective-origin: 50% 90px; }
+.card.is-focused .card__tilt { transform: translateZ(90.9px); }
 .card.is-tilting .card__tilt { transition: transform 0.15s ease-out; }
 
 
@@ -424,7 +447,7 @@ html.noshadow .card.is-focused .card__frame { box-shadow: none; }
 }
 
 /* «ОК»: короткое «проседание», как нажатие на тачпад */
-.card.is-focused.is-pressed .card__tilt { transform: scale(1.03); transition-duration: 0.1s; }
+.card.is-focused.is-pressed .card__tilt { transform: translateZ(29.1px); transition-duration: 0.1s; }
 .btn.is-pressed,
 .sidebar__item.is-pressed,
 .setting.is-pressed,
