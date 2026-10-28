@@ -282,7 +282,15 @@ export function App() {
         />
       )}
 
-      {saver && <Screensaver onExit={() => setSaver(false)} />}
+      {saver && (
+        <Screensaver
+          onExit={() => setSaver(false)}
+          onOpen={(item) => {
+            setSaver(false);
+            openItem(item);
+          }}
+        />
+      )}
 
       <div class={`toast glass${toast ? ' is-visible' : ''}`}>{toast}</div>
     </div>

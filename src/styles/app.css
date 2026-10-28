@@ -1303,6 +1303,7 @@ html.flat .card--poster .card__caption { will-change: auto; }
 }
 .saver__title { font-size: 34px; font-weight: 700; color: rgba(255, 255, 255, 0.92); }
 .saver__meta { margin-top: 4px; font-size: 22px; color: rgba(255, 255, 255, 0.6); }
+.saver__hint { margin-left: 28px; color: rgba(255, 255, 255, 0.45); }
 
 /* Панель «Субтитры / Аудио» сверху */
 .player__panel {

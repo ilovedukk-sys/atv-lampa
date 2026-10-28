@@ -1,7 +1,7 @@
 /**
  * Заставка в духе Apple TV: кадры фильмов и сериалов из подборок на весь экран, медленно проплывают
- * и плавно сменяют друг друга; внизу слева — название, справа вверху — часы. Любая кнопка или движение
- * Magic Remote — назад туда, где были (нажатие при этом никуда не уходит).
+ * и плавно сменяют друг друга; внизу слева — название, справа вверху — часы. «ОК» — экран этого фильма,
+ * любая другая кнопка или движение Magic Remote — назад туда, где были (нажатие при этом никуда не уходит).
  *
  * Для слабого ТВ: два слоя-кадра на всё время заставки, меняем им картинку, когда слой скрыт.
  * Движение (медленное приближение/отдаление со сдвигом) — translateZ в перспективе, как увеличение карточек:
@@ -31,18 +31,30 @@ const NOT_FOR_SAVER = [27, 10767, 10763, 10764];
 // Сдвиг указателя Magic Remote меньше этого не будит (дрожание руки, событие при появлении указателя)
 const WAKE_MOVE_PX = 30;
 
-export function Screensaver({ onExit }: { onExit: () => void }) {
+interface Props {
+  onExit: () => void;
+  onOpen: (item: Item) => void; // «ОК» — открыть фильм, который сейчас на экране
+}
+
+const KEY_OK = 13;
+
+export function Screensaver({ onExit, onOpen }: Props) {
   const layers = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
   const [caption, setCaption] = useState<Item | null>(null);
+  const shown = useRef<Item | null>(null);
+  shown.current = caption;
   const [time, setTime] = useState(clockNow);
 
-  // Выход: любая кнопка (раньше движка фокуса и плеера — в фазе перехвата) или заметное движение указателя
+  // Выход: любая кнопка (раньше движка фокуса и плеера — в фазе перехвата) или заметное движение указателя.
+  // «ОК» (и нажатие Magic Remote) — сразу экран фильма с кадра на заставке
   useEffect(() => {
     const exit = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
       markActive();
-      onExit();
+      const ok = e.type === 'mousedown' || (e as KeyboardEvent).keyCode === KEY_OK;
+      if (ok && shown.current) onOpen(shown.current);
+      else onExit();
     };
     let start: { x: number; y: number } | null = null;
     const onMove = (e: MouseEvent) => {
@@ -147,7 +159,10 @@ export function Screensaver({ onExit }: { onExit: () => void }) {
       {caption && (
         <div key={caption.id} class="saver__caption">
           <div class="saver__title">{caption.title}</div>
-          <div class="saver__meta">{[caption.kind === 'show' ? 'Сериал' : 'Фильм', caption.year].filter(Boolean).join(' · ')}</div>
+          <div class="saver__meta">
+            {[caption.kind === 'show' ? 'Сериал' : 'Фильм', caption.year].filter(Boolean).join(' · ')}
+            <span class="saver__hint">«ОК» — подробнее</span>
+          </div>
         </div>
       )}
     </div>
