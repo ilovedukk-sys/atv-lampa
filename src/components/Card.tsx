@@ -20,7 +20,12 @@ export function Card({ item, kind, onSelect }: Props) {
   }, [item]);
 
   return (
-    <div ref={ref} class={`card card--${kind}`} data-focusable onClick={() => onSelect(item)}>
+    <div
+      ref={ref}
+      class={`card card--${kind}${item.progress !== undefined ? ' has-progress' : ''}`}
+      data-focusable
+      onClick={() => onSelect(item)}
+    >
       <div class="card__tilt">
         <div class="card__frame">
           <Artwork item={item} variant={kind} />

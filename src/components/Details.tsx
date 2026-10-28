@@ -21,7 +21,7 @@ import { Overlay } from './Overlay';
 import { kpEnabled, kpProblem, kpQuery, loadKp, score, withKp, type Kp } from '../api/kinopoisk';
 import { playTrailer, trailerImage, trailerMeta } from '../core/trailer';
 import type { Trailer } from '../data/details';
-import { finished, lastWatch, remaining, useHistoryVersion } from '../core/history';
+import { continueText, lastWatch, resumable, useHistoryVersion } from '../core/history';
 import type { WatchOptions } from '../App';
 
 interface Props {
@@ -137,9 +137,9 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
   // «Продолжить» — если начали смотреть и не досмотрели (история обновляется после плеера)
   useHistoryVersion();
   const last = lastWatch(it.id);
-  const resumable = !!last && last.time > 30 && !finished(last);
-  const playLabel = resumable ? 'Продолжить' : d.kind === 'show' ? 'Смотреть сериал' : 'Смотреть';
-  const startWatch = () => onWatch(it, resumable ? { resume: last } : {});
+  const canResume = resumable(last);
+  const playLabel = canResume ? 'Продолжить' : d.kind === 'show' ? 'Смотреть сериал' : 'Смотреть';
+  const startWatch = () => onWatch(it, canResume ? { resume: last } : {});
   const pickEpisode = (ep: Item) => {
     const m = /:s(\d+)e(\d+)$/.exec(ep.id);
     if (!m) return notify('Серии загружаются…');
@@ -204,16 +204,18 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
               <p>{d.description || (d.loaded ? NO_DESCRIPTION : '…')}</p>
               <div class="details__more">ЕЩЁ</div>
             </div>
-            {resumable && (
+            {canResume && (
               <div class="details__progress">
-                <span class="details__bar">
-                  <i
-                    style={{
-                      width: `${Math.round((last!.time / last!.duration) * 100)}%`,
-                    }}
-                  />
-                </span>
-                {[last!.label, remaining(last!)].filter(Boolean).join(' · ')}
+                {!last!.upNext && (
+                  <span class="details__bar">
+                    <i
+                      style={{
+                        width: `${Math.round((last!.time / last!.duration) * 100)}%`,
+                      }}
+                    />
+                  </span>
+                )}
+                {continueText(last!)}
               </div>
             )}
             <div class="details__buttons">
@@ -222,7 +224,7 @@ export function DetailsScreen({ item, active, onOpen, onWatch, onClose, notify, 
                 item={it}
                 onChange={(added) => notify(added ? `«${it.title}» в медиатеке` : `«${it.title}» убран из медиатеки`)}
               />
-              {resumable && <TextButton label="Раздачи" onClick={() => onWatch(it)} />}
+              {canResume && <TextButton label="Раздачи" onClick={() => onWatch(it)} />}
               {d.trailers.length > 0 && <TextButton label="Трейлер" onClick={() => trailer(d.trailers[0])} />}
             </div>
           </div>

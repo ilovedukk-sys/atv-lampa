@@ -7,12 +7,15 @@
  *   ↓                     — панель «Субтитры / Аудио», ↑ — показать время
  *   «Назад», Stop         — выйти (позиция запоминается, в следующий раз — с того же места)
  *
+ * В конце серии справа внизу — «Следующая серия» с отсчётом, как в tvOS: «ОК» — сразу, «Назад» — досмотреть титры.
+ *
  * Пока идёт видео, интерфейс почти не перерисовывается: время обновляем, только когда оно на экране.
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { PlayRequest, TorrentFile } from '../data/types';
 import { getTorrent, setViewed, streamUrl } from '../api/torrserver';
 import { episodeOf } from '../api/releases';
+import { img } from '../api/tmdb';
 import { focus, focusedClass, pushBackHandler } from '../core/focus';
 import { clock, finished, historyChanged, positionOf, remember } from '../core/history';
 import { sound } from '../core/sound';
@@ -27,6 +30,11 @@ interface Props {
 const HIDE_MS = 4000;
 const SEEK_APPLY_MS = 700; // перематываем, когда кнопку отпустили, — а не на каждый шаг
 const SAVE_EVERY_MS = 10000;
+// «Следующая серия»: карточка за 40 с до конца файла, через 10 с просмотра — следующая серия.
+// Отсчёт идёт по времени видео: на паузе стоит, перемотка назад прячет карточку.
+const NEXT_SHOW_S = 40;
+const NEXT_COUNTDOWN_S = 10;
+const NEXT_MIN_DURATION_S = 300; // у коротких файлов (сэмплы, бонусы) — без карточки
 
 const KEY = {
   LEFT: 37,
@@ -73,13 +81,12 @@ export function Player({ req, active, onClose }: Props) {
   const [cueText, setCueText] = useState('');
   const subs = subsFor(file, req.subs);
 
-  const ep = episodeOf(file.path);
-  const label =
-    req.item.kind === 'show' && ep.episode !== undefined
-      ? `${ep.season ? `Сезон ${ep.season}, ` : ''}серия ${ep.episode}`
-      : req.files.length > 1
-        ? file.path.split('/').pop() || ''
-        : '';
+  const label = fileLabel(req, file);
+
+  // «Следующая серия»: сколько секунд осталось до неё (null — карточки нет)
+  const next = req.files[index + 1];
+  const [upNext, setUpNext] = useState<number | null>(null);
+  const countdown = useRef({ shown: false, dismissed: false, played: 0, at: 0 });
 
   // ---------- показ интерфейса ----------
 
@@ -97,8 +104,8 @@ export function Player({ req, active, onClose }: Props) {
 
   // ---------- сохранение позиции ----------
 
-  const save = (notify = false) => {
-    const v = video.current;
+  // v — при закрытии плеера: ссылка video.current к этому моменту уже пустая
+  const save = (notify = false, v = video.current) => {
     if (!v || !v.duration || isNaN(v.duration)) return;
     remember(
       {
@@ -116,6 +123,37 @@ export function Player({ req, active, onClose }: Props) {
     );
   };
 
+  /** Серию досмотрели — в «Продолжить просмотр» встаёт следующая, с начала (запись по сериалу одна). */
+  const saveNext = (v = video.current) => {
+    if (!next || !v || !v.duration || !finished({ time: v.currentTime, duration: v.duration })) return false;
+    remember(
+      {
+        itemId: req.item.id,
+        item: req.item,
+        hash: req.hash,
+        link: req.link,
+        fileId: next.id,
+        filePath: next.path,
+        label: fileLabel(req, next),
+        time: 0,
+        duration: 0,
+        upNext: true,
+      },
+      true,
+    );
+    return true;
+  };
+
+  const goNext = () => {
+    setViewed(req.hash, file.id);
+    setIndex(index + 1);
+  };
+
+  const dismissNext = () => {
+    countdown.current.dismissed = true;
+    setUpNext(null);
+  };
+
   // ---------- видео ----------
 
   useEffect(() => {
@@ -124,6 +162,8 @@ export function Player({ req, active, onClose }: Props) {
     setError('');
     setPaused(false);
     setSubId(-1);
+    setUpNext(null);
+    countdown.current = { shown: false, dismissed: false, played: 0, at: 0 };
     let resumed = false;
 
     const onMeta = () => {
@@ -151,12 +191,39 @@ export function Player({ req, active, onClose }: Props) {
         const c = cues.current.filter((x) => t >= x.start && t <= x.end)[0];
         setCueText(c ? c.text : '');
       }
+      if (next && v.duration > NEXT_MIN_DURATION_S && isFinite(v.duration)) nextTick();
     };
+    // «Следующая серия» (timeupdate — ~4 раза в секунду; состояние меняется раз в секунду)
+    const nextTick = () => {
+      const c = countdown.current;
+      const left = v.duration - v.currentTime;
+      if (left > NEXT_SHOW_S + 5) {
+        // Перемотали назад — карточка снова появится в конце, даже если её скрывали
+        if (c.shown || c.dismissed) {
+          countdown.current = { shown: false, dismissed: false, played: 0, at: 0 };
+          setUpNext(null);
+        }
+      } else if (left <= NEXT_SHOW_S && !c.dismissed) {
+        // Считаем только обычный просмотр: шаги больше 1,5 с — это перемотка
+        const step = v.currentTime - c.at;
+        if (c.shown && step > 0 && step < 1.5) c.played += step;
+        c.shown = true;
+        const sec = Math.ceil(NEXT_COUNTDOWN_S - c.played);
+        if (sec > 0) setUpNext(sec);
+        else {
+          c.dismissed = true; // следующий timeupdate может прийти раньше смены серии
+          goNext();
+        }
+      }
+      c.at = v.currentTime;
+    };
+    // Позицию сохранит уборка эффекта (для сериала — уже следующую серию)
     const onEnded = () => {
-      save(true);
-      setViewed(req.hash, file.id);
-      if (index < req.files.length - 1) setIndex(index + 1);
-      else onClose();
+      if (next) goNext();
+      else {
+        setViewed(req.hash, file.id);
+        onClose();
+      }
     };
     const onError = () => {
       setWaiting(false);
@@ -182,7 +249,7 @@ export function Player({ req, active, onClose }: Props) {
     const saver = setInterval(() => !v.paused && save(), SAVE_EVERY_MS);
     return () => {
       clearInterval(saver);
-      save(true);
+      if (!saveNext(v)) save(true, v);
       v.removeEventListener('loadedmetadata', onMeta);
       v.removeEventListener('waiting', onWaiting);
       v.removeEventListener('playing', onPlaying);
@@ -309,6 +376,7 @@ export function Player({ req, active, onClose }: Props) {
         seekBy(k === KEY.RW ? -30 : 30);
       } else if (k === KEY.ENTER || k === KEY.PLAY_PAUSE) {
         if (error) onClose();
+        else if (upNext !== null) goNext();
         else togglePlay();
         sound.select();
       } else if (k === KEY.PLAY) {
@@ -330,13 +398,13 @@ export function Player({ req, active, onClose }: Props) {
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [active, panel, index, error]);
+  }, [active, panel, index, error, upNext !== null]);
 
-  // «Назад»: закрывает панель, затем плеер
+  // «Назад»: закрывает панель, потом карточку «Следующая серия», потом плеер
   useEffect(() => {
     if (!active) return;
-    return pushBackHandler(() => (panel ? setPanel(false) : onClose()));
-  }, [active, panel]);
+    return pushBackHandler(() => (panel ? setPanel(false) : upNext !== null ? dismissNext() : onClose()));
+  }, [active, panel, upNext !== null]);
 
   // ---------- отрисовка ----------
 
@@ -384,6 +452,23 @@ export function Player({ req, active, onClose }: Props) {
           <span>{duration ? '−' + clock(duration - current) : '--:--'}</span>
         </div>
       </div>
+
+      {upNext !== null && next && (
+        <div class={`player__next glass${overlay || paused ? ' is-raised' : ''}`}>
+          <div
+            class="player__nextart"
+            style={{
+              backgroundColor: req.item.colors[1],
+              backgroundImage: req.item.backdrop ? `url(${img(req.item.backdrop, 'w300')})` : undefined,
+            }}
+          />
+          <div class="player__nextinfo">
+            <div class="player__nextlabel">{req.item.kind === 'show' ? 'Следующая серия' : 'Далее'}</div>
+            <div class="player__nexttitle">{fileLabel(req, next) || req.item.title}</div>
+            <div class="player__nexttime">Через {upNext} с · «ОК» — сейчас</div>
+          </div>
+        </div>
+      )}
 
       {panel && (
         <Panel
@@ -456,6 +541,15 @@ function PanelChip({ label, active, onPick }: { label: string; active: boolean; 
 }
 
 // ---------- помощники ----------
+
+/** Подпись файла: «Сезон 1, серия 3» у сериала, имя файла — если файлов несколько, иначе пусто. */
+function fileLabel(req: PlayRequest, file: TorrentFile) {
+  const ep = episodeOf(file.path);
+  if (req.item.kind === 'show' && ep.episode !== undefined) {
+    return `${ep.season ? `Сезон ${ep.season}, ` : ''}серия ${ep.episode}`;
+  }
+  return req.files.length > 1 ? file.path.split('/').pop() || '' : '';
+}
 
 /** Дорожки звука (если телевизор их показывает — зависит от версии webOS и файла). */
 function audioTracksOf(v: HTMLVideoElement | null): any[] {

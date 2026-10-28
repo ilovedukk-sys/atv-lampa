@@ -1,7 +1,7 @@
 /**
  * История просмотра: где остановились в каждом фильме/серии и какую раздачу смотрели.
- * По ней работает «Продолжить» на экране фильма (сразу в плеер, без выбора раздачи)
- * и продолжение с того же места. Хранится в localStorage телевизора.
+ * По ней работают «Продолжить» на экране фильма (сразу в плеер, без выбора раздачи),
+ * полка «Продолжить просмотр» на главной и продолжение с того же места. Хранится в localStorage телевизора.
  */
 import { useEffect, useState } from 'preact/hooks';
 import type { Item } from '../data/types';
@@ -20,7 +20,11 @@ export interface WatchEntry {
   time: number; // секунды
   duration: number;
   updated: number;
+  upNext?: boolean; // прошлую серию досмотрели — эта следующая, с начала
 }
+
+// Сколько карточек на полке «Продолжить просмотр»
+const SHELF_MAX = 20;
 
 const listeners = new Set<() => void>();
 
@@ -74,14 +78,25 @@ export function historyChanged() {
   listeners.forEach((fn) => fn());
 }
 
-/** Досмотрели почти до конца — считаем просмотренным, «Продолжить» не нужно. */
+/** Досмотрели почти до конца (титры, последняя минута) — считаем просмотренным, «Продолжить» не нужно. */
 export function finished(e: { time: number; duration: number }) {
-  return e.duration > 0 && e.time > e.duration - Math.min(300, e.duration * 0.06);
+  return e.duration > 0 && e.time > e.duration - Math.min(300, Math.max(60, e.duration * 0.06));
 }
 
-/** Для полки «Продолжить просмотр»: начатые и недосмотренные. */
+/** Есть что продолжить: начатое и недосмотренное или следующая серия после досмотренной. */
+export function resumable(e: WatchEntry | undefined): e is WatchEntry {
+  return !!e && (!!e.upNext || (e.time > 30 && !finished(e)));
+}
+
+/** Для полки «Продолжить просмотр» на главной: свежие первыми. */
 export function continueItems(): WatchEntry[] {
-  return entries.filter((e) => e.time > 30 && !finished(e));
+  return entries.filter(resumable).slice(0, SHELF_MAX);
+}
+
+/** Строка под «Продолжить»: «Сезон 1, серия 3 · Осталось 21 мин» или «Следующая серия · Сезон 1, серия 4». */
+export function continueText(e: WatchEntry) {
+  if (e.upNext) return [e.item.kind === 'show' ? 'Следующая серия' : 'Далее', e.label].filter(Boolean).join(' · ');
+  return [e.label, remaining(e)].filter(Boolean).join(' · ');
 }
 
 export function useHistoryVersion() {

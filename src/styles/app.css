@@ -466,6 +466,9 @@ html.noshadow .card.is-focused .card__frame { box-shadow: none; }
   overflow: hidden;
 }
 .card__progress i { display: block; height: 100%; border-radius: 3px; background: #fff; }
+/* «Продолжить просмотр»: название на кадре — над полоской просмотра */
+.card.has-progress .art__title { max-height: calc(2.2em + 36px); padding-bottom: 36px; } /* border-box: две строки + отступ */
+.card.has-progress .art__logo { bottom: 52px; }
 
 .card__caption {
   margin-top: 24px; /* место под увеличенную карточку — подпись не двигаем, чтобы не перерисовывать */
@@ -1204,6 +1207,42 @@ html.flat .card--poster .card__caption { will-change: auto; }
   text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
 }
 .player__subs.is-raised { bottom: 290px; }
+
+/*
+ * «Следующая серия» в конце серии — справа внизу, как в tvOS. Без анимаций: секунды отсчёта —
+ * просто текст раз в секунду; над видео (отдельная плоскость webOS) такой блок почти ничего не стоит.
+ */
+.player__next {
+  position: absolute;
+  right: var(--safe-x);
+  bottom: 90px;
+  display: flex;
+  align-items: center;
+  width: 660px;
+  padding: 20px;
+  border-radius: 24px;
+}
+.player__next.is-raised { bottom: 290px; }
+.player__nextart {
+  flex-shrink: 0;
+  width: 240px;
+  height: 135px;
+  margin-right: 26px;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+}
+.player__nextinfo { min-width: 0; }
+.player__nextlabel { font-size: 19px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
+.player__nexttitle {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player__nexttime { margin-top: 10px; font-size: 21px; color: var(--text-secondary); }
 
 /* Панель «Субтитры / Аудио» сверху */
 .player__panel {

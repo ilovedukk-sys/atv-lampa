@@ -3,16 +3,16 @@
  * Данные — из TMDB (src/data/catalog.ts), пока грузятся — индикатор.
  */
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import type { Item, Page } from '../data/types';
+import type { Item, Page, Shelf } from '../data/types';
 import { loadPage, withLogos, type BrowseTab } from '../data/catalog';
-import { focusFirstIn } from '../core/focus';
+import { focusFirstIn, getFocused } from '../core/focus';
 import { HERO_INTERVAL, Hero, HeroBackdrop } from './Hero';
 import { ShelfRow } from './ShelfRow';
 import { Message, Spinner } from './Spinner';
-import { finished, lastWatch } from '../core/history';
+import { continueItems, continueText, lastWatch, resumable, useHistoryVersion } from '../core/history';
 import { isUltra } from '../core/lite';
 import { calmHex, tintOf } from '../core/color';
-import { img } from '../api/tmdb';
+import { hasTmdb, img } from '../api/tmdb';
 import type { WatchOptions } from '../App';
 
 
@@ -103,15 +103,50 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
    * Те же объекты разметки Preact пропускает, не заходя внутрь. onOpen при этом остаётся первым —
    * это нормально: он работает через setState и ссылки (App.tsx) и от перерисовки не зависит.
    */
+  /*
+   * «Продолжить просмотр» — первой полкой главной, как в Apple TV: начатое и следующие серии, свежие первыми.
+   * Строится заново только при изменении истории (закрыли плеер), остальные полки при этом не трогаем.
+   * В замере плавности её нет — чтобы цифры сравнивались с прежними.
+   */
+  const historyVersion = useHistoryVersion();
+  const cont = useMemo(() => (tab === 'home' && hasTmdb && !bench ? continueShelf() : null), [historyVersion]);
+  const hasCont = !!cont;
+  // Первая полка под Top Shelf встаёт ниже — сверху остаётся полоска кадра с названием, как в tvOS 26
+  const firstStick = page && page.hero.length ? FIRST_SHELF_STICK : undefined;
+
+  const contRow = useMemo(
+    () =>
+      page &&
+      cont && (
+        <ShelfRow
+          key={cont.id}
+          shelf={cont}
+          stick={firstStick}
+          onSelect={(item) => {
+            // Сразу в плеер с того же места (или следующая серия); если запись пропала — экран фильма
+            const last = lastWatch(item.id);
+            if (resumable(last)) onWatch(last.item, { resume: last });
+            else onOpen(item);
+          }}
+        />
+      ),
+    [page, cont],
+  );
+
   const shelves = useMemo(
     () =>
       page &&
       page.shelves.map((s, i) => (
-        // Первая полка под Top Shelf встаёт ниже — сверху остаётся полоска кадра с названием, как в tvOS 26
-        <ShelfRow key={s.id} shelf={s} onSelect={onOpen} stick={i === 0 && page.hero.length ? FIRST_SHELF_STICK : undefined} />
+        <ShelfRow key={s.id} shelf={s} onSelect={onOpen} stick={i === 0 && !hasCont ? firstStick : undefined} />
       )),
-    [page],
+    [page, hasCont],
   );
+
+  // Досмотрели — карточка ушла с полки вместе с фокусом: ставим его на первую полку
+  useEffect(() => {
+    const f = getFocused();
+    if (visible && page && f && !document.body.contains(f)) focusFirstIn('.home .shelf');
+  }, [historyVersion]);
 
   if (error) return <Message title="Нет связи с TMDB" text="Проверьте интернет и откройте вкладку ещё раз." />;
   if (!page) return <Spinner />;
@@ -132,7 +167,7 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
             onPlay={(item) => {
               // Начинали смотреть — продолжаем с того же места, иначе выбор раздачи
               const last = lastWatch(item.id);
-              onWatch(item, last && last.time > 30 && !finished(last) ? { resume: last } : {});
+              onWatch(item, resumable(last) ? { resume: last } : {});
             }}
             onInfo={onOpen}
             onNext={() => setHeroIndex((i) => (i + 1) % page.hero.length)}
@@ -141,6 +176,7 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
         ) : (
           <div class="page__top" />
         )}
+        {contRow}
         {shelves}
         <div class="page__end" />
       </div>
@@ -150,3 +186,21 @@ export function BrowseView({ tab, visible, bench, onOpen, onWatch, notify, autoF
 
 // Видна ли главная — читается из таймера карусели без пересоздания эффекта
 const visibleRef = { v: true };
+
+/** Полка «Продолжить просмотр»: карточки 16:9 с полоской просмотра и строкой «серия · сколько осталось». */
+function continueShelf(): Shelf | null {
+  const list = continueItems();
+  if (!list.length) return null;
+  return {
+    id: 'continue',
+    title: 'Продолжить просмотр',
+    kind: 'landscape',
+    items: list.map(
+      (e): Item => ({
+        ...e.item,
+        progress: e.upNext ? undefined : Math.min(1, e.time / e.duration),
+        episode: continueText(e),
+      }),
+    ),
+  };
+}
