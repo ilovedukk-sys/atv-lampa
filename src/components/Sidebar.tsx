@@ -7,6 +7,7 @@ import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { focusedClass, getFocused, onFocusChange, screenOf } from '../core/focus';
 import { FilmIcon, GearIcon, HomeIcon, KidsIcon, LibraryIcon, ProfileIcon, SearchIcon, TvIcon } from './Icons';
+import { avatarColor, initials, profileName, useProfile } from '../core/profile';
 
 export const TABS: { id: string; label: string; Icon: () => JSX.Element }[] = [
   { id: 'search', label: 'Поиск', Icon: SearchIcon },
@@ -28,6 +29,7 @@ interface Props {
 
 export function Sidebar({ active, onSelect }: Props) {
   const ref = useRef<HTMLElement>(null);
+  useProfile(); // имя и аватар меняются в «Настройках»
 
   // Фокус в панели — панель открыта (класс на экране), ушёл — спрятана
   useEffect(
@@ -44,10 +46,8 @@ export function Sidebar({ active, onSelect }: Props) {
   return (
     <nav ref={ref} class="sidebar glass" data-sidebar data-focus-group data-focus-remember>
       <div class="sidebar__profile">
-        <span class="sidebar__avatar">
-          <ProfileIcon />
-        </span>
-        <span class="sidebar__name">Профиль</span>
+        <Avatar />
+        <span class="sidebar__name">{profileName() || 'Профиль'}</span>
         <Clock />
       </div>
       {TABS.map((t) => (
@@ -89,6 +89,17 @@ function Item(props: { id: string; label: string; Icon: () => JSX.Element; activ
       <Icon />
       <span>{props.label}</span>
     </button>
+  );
+}
+
+/** Аватар профиля: инициалы на цветном кружке, без имени — значок. Так же — в «Настройках». */
+export function Avatar() {
+  const c = avatarColor();
+  const letters = initials();
+  return (
+    <span class="sidebar__avatar" style={{ background: `linear-gradient(160deg, ${c.from}, ${c.to})` }}>
+      {letters ? <b>{letters}</b> : <ProfileIcon />}
+    </span>
   );
 }
 

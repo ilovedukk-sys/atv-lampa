@@ -15,6 +15,9 @@ import { switchUiRes, uiRes, uiResAvailable, UI_RES_LABELS, type UiRes } from '.
 import { hasWebOS } from '../core/webos';
 import { focus, getFocused } from '../core/focus';
 import { cycleSaver, saverLabel } from '../core/screensaver';
+import { avatarColor, cycleAvatarColor, profileName, setProfileName } from '../core/profile';
+import { Avatar } from './Sidebar';
+import type { JSX } from 'preact';
 import { TextInput } from './TextInput';
 
 const VERSION = __APP_VERSION__; // из public/appinfo.json (vite.config.ts)
@@ -22,11 +25,11 @@ const VERSION = __APP_VERSION__; // из public/appinfo.json (vite.config.ts)
 interface Row {
   label: string;
   hint: string;
-  value: () => string;
+  value: () => string | JSX.Element;
   action: () => void;
 }
 
-type Field = 'tmdb' | 'ts' | 'parser' | 'parserKey' | 'kp';
+type Field = 'tmdb' | 'ts' | 'parser' | 'parserKey' | 'kp' | 'name';
 type Editing = null | { field: Field; back: HTMLElement | null };
 
 export function SettingsView({ notify }: { notify: (text: string) => void }) {
@@ -93,6 +96,26 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
     setEditing(null);
     if (back) setTimeout(() => document.body.contains(back) && focus(back), 0);
   };
+
+  const profile: Row[] = [
+    {
+      label: 'Имя',
+      hint: 'Показывается в боковой панели. Буквы имени — на аватаре',
+      value: () => profileName() || 'Не указано',
+      action: () => edit('name'),
+    },
+    {
+      label: 'Цвет аватара',
+      hint: '«ОК» — следующий цвет',
+      value: () => (
+        <span class="setting__avatar">
+          <Avatar />
+          {avatarColor().label}
+        </span>
+      ),
+      action: () => cycleAvatarColor(),
+    },
+  ];
 
   const sources: Row[] = [
     {
@@ -248,7 +271,8 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
         </div>
         {/* Без ключа TMDB главное — ввести его, поэтому этот раздел первым */}
         {!hasTmdb && group('Данные о фильмах', data, true)}
-        {group('Источники видео', sources, hasTmdb)}
+        {group('Профиль', profile, hasTmdb)}
+        {group('Источники видео', sources)}
         {hasTmdb && group('Данные о фильмах', data)}
         {group('Приложение', view)}
         <div class="settings__about">
@@ -290,6 +314,22 @@ export function SettingsView({ notify }: { notify: (text: string) => void }) {
               },
               (e: Error) => notify(e.message),
             );
+          }}
+        />
+      )}
+      {editing && editing.field === 'name' && (
+        <TextInput
+          title="Имя профиля"
+          hint="Например, «Анна» или «Семья». Пусто — без имени."
+          value={profileName()}
+          placeholder="Ваше имя"
+          kind="name"
+          maxLength={20}
+          onCancel={finishEdit}
+          onDone={(v) => {
+            setProfileName(v);
+            finishEdit();
+            notify(v ? `Привет, ${profileName()}!` : 'Имя профиля убрано');
           }}
         />
       )}
